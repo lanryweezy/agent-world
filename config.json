@@ -1,0 +1,68 @@
+{
+  "ecosystem_name": "AutonomousAI",
+  "data_directory": "./data",
+  "log_level": "INFO",
+  "debug_mode": false,
+  "max_agents": 50,
+  "initial_agent_count": 5,
+  "agent_lifecycle_hours": 24,
+  "reproduction_enabled": true,
+  "human_oversight_enabled": true,
+  "god_mode_enabled": true,
+  "intervention_alerts": true,
+  "database": {
+    "type": "sqlite",
+    "host": "localhost",
+    "port": 5432,
+    "database": "ai_ecosystem",
+    "username": null,
+    "password": null,
+    "connection_pool_size": 10
+  },
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4",
+    "api_key": null,
+    "api_base": null,
+    "max_tokens": 2000,
+    "temperature": 0.7,
+    "timeout": 30
+  },
+  "network": {
+    "base_port": 8000,
+    "max_connections": 100,
+    "heartbeat_interval": 30,
+    "message_timeout": 10,
+    "retry_attempts": 3,
+    "buffer_size": 8192
+  },
+  "learning": {
+    "daily_learning_hours": 8,
+    "max_concurrent_browsers": 5,
+    "browser_timeout": 30,
+    "content_filter_enabled": true,
+    "max_pages_per_session": 50,
+    "knowledge_validation_threshold": 0.7
+  },
+  "safety": {
+    "code_modification_enabled": true,
+    "sandbox_enabled": true,
+    "max_code_changes_per_day": 5,
+    "validation_required": true,
+    "emergency_shutdown_enabled": true,
+    "resource_limits": {
+      "max_memory_mb": 1024,
+      "max_cpu_percent": 80,
+      "max_disk_mb": 500
+    }
+  },
+  "memory": {
+    "max_short_term_memory_items": 1000,
+    "max_long_term_memory_items": 10000,
+    "consolidation_threshold": 0.7,
+    "forgetting_threshold": 0.3,
+    "memory_retention_hours": 168,
+    "compression_enabled": true,
+    "max_compressed_memory_size": 1000000
+  }
+}
