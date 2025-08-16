@@ -344,7 +344,95 @@ class MemorySystem(AgentModule, MemoryInterface):
             "cache_size": len(self.memory_cache),
             "retrieval_cache_size": len(self.retrieval_cache)
         }
-    
+
+    # --- "In-House Tool" Methods for Knowledge Base ---
+
+    async def add_to_knowledge_base(self, source: str, content: str, tags: Optional[List[str]] = None) -> str:
+        """
+        Adds raw external knowledge to the persistent knowledge base.
+        This acts as the agent's "In-House Tool" for storing raw data.
+
+        Args:
+            source: The origin of the knowledge (e.g., URL, tool name).
+            content: The raw content to store (e.g., HTML, API response).
+            tags: Optional list of tags for categorization.
+
+        Returns:
+            The generated ID for the stored knowledge.
+        """
+        try:
+            knowledge_id = generate_knowledge_id()
+            timestamp = datetime.now().timestamp()
+            tag_string = json.dumps(tags or [])
+
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    INSERT INTO knowledge_base (knowledge_id, source, content, tags, timestamp)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (knowledge_id, source, content, tag_string, timestamp))
+                conn.commit()
+
+            self.logger.debug(f"Added knowledge {knowledge_id} from source '{source}' to knowledge base.")
+            return knowledge_id
+        except Exception as e:
+            self.logger.error(f"Failed to add to knowledge base: {e}")
+            raise
+
+    async def query_knowledge_base(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Queries the knowledge base using full-text search.
+
+        Args:
+            query: The search query.
+            limit: The maximum number of results to return.
+
+        Returns:
+            A list of dictionaries representing the search results.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("""
+                    SELECT knowledge_id, source, snippet(knowledge_base, 2, '<b>', '</b>', '...', 20) as snippet, rank, timestamp
+                    FROM knowledge_base
+                    WHERE knowledge_base MATCH ?
+                    ORDER BY rank
+                    LIMIT ?
+                """, (query, limit))
+
+                results = [dict(row) for row in cursor.fetchall()]
+
+            self.logger.debug(f"Queried knowledge base for '{query}', found {len(results)} results.")
+            return results
+        except Exception as e:
+            self.logger.error(f"Failed to query knowledge base: {e}")
+            return []
+
+    async def get_knowledge_by_id(self, knowledge_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves a full knowledge entry by its ID.
+
+        Args:
+            knowledge_id: The ID of the knowledge to retrieve.
+
+        Returns:
+            A dictionary with the full knowledge content, or None if not found.
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("""
+                    SELECT * FROM knowledge_base WHERE knowledge_id = ?
+                """, (knowledge_id,))
+                row = cursor.fetchone()
+
+                if row:
+                    return dict(row)
+            return None
+        except Exception as e:
+            self.logger.error(f"Failed to get knowledge by ID {knowledge_id}: {e}")
+            return None
+
     async def get_memories_by_type(self, memory_type: str, limit: int = 50) -> List[Memory]:
         """
         Get memories of a specific type.
@@ -470,6 +558,17 @@ class MemorySystem(AgentModule, MemoryInterface):
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_timestamp ON memories(timestamp)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_importance ON memories(importance)")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_memory_agent ON memories(agent_id)")
+
+                # Create knowledge_base table for the "In-House Tool"
+                conn.execute("""
+                    CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_base USING fts5(
+                        knowledge_id,
+                        source,
+                        content,
+                        tags,
+                        timestamp
+                    )
+                """)
                 
                 conn.commit()
                 

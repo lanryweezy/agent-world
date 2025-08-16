@@ -274,6 +274,54 @@ class TestAgentCore:
         assert not agent.message_queue.empty()
         assert agent.metrics["messages_processed"] == 1
 
+    @patch('autonomous_ai_ecosystem.core.agent_core.AgentCore._enter_learning_phase', new_callable=Mock)
+    @patch('autonomous_ai_ecosystem.core.agent_core.AgentCore._enter_sleep_mode', new_callable=Mock)
+    async def test_agent_lifecycle_phases(self, mock_enter_sleep_mode, mock_enter_learning_phase):
+        """Test that agent enters learning and sleep phases based on state."""
+        identity = AgentIdentity(
+            agent_id="test_agent_lifecycle",
+            name="Lifecycle Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="To test lifecycles",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        config.agent_lifecycle_hours = 0.001 # Set a very short lifecycle for testing sleep mode
+
+        agent = AgentCore(identity, config)
+        await agent.initialize()
+
+        # --- Test Learning Phase ---
+        # Set high curiosity to trigger learning
+        agent.state.emotional_state['curiosity'] = 0.9
+
+        # Run cycle briefly
+        with patch('asyncio.sleep', new_callable=Mock):
+             # We patch sleep to speed up the loop
+            cycle_task = asyncio.create_task(agent.run_daily_cycle())
+            await asyncio.sleep(0.01)
+            agent.is_running = False # Stop the cycle
+            await cycle_task
+
+        # Assert that learning phase was entered
+        mock_enter_learning_phase.assert_called()
+
+        # --- Test Sleep Phase ---
+        # Reset agent state for sleep test
+        agent.is_running = True
+        agent.daily_cycle_start = datetime.now() - timedelta(hours=1) # Pretend cycle has been running
+
+        # Run cycle again
+        with patch('asyncio.sleep', new_callable=Mock):
+            cycle_task = asyncio.create_task(agent.run_daily_cycle())
+            await asyncio.sleep(0.01)
+            agent.is_running = False
+            await cycle_task
+
+        # Assert that sleep mode was entered
+        mock_enter_sleep_mode.assert_called()
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

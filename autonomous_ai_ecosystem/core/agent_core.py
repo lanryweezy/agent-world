@@ -54,6 +54,7 @@ class AgentCore:
         # Lifecycle management
         self.current_phase = LifecyclePhase.INITIALIZING
         self.last_sleep_time: Optional[datetime] = None
+        self.last_learning_time: Optional[datetime] = None
         self.daily_cycle_start: Optional[datetime] = None
         self.is_running = False
         
@@ -299,7 +300,20 @@ class AgentCore:
         if hasattr(self, 'daily_planner'):
             return await self.daily_planner.execute_next_activity()
         return {"error": "Daily planner not available"}
-    
+
+    async def reflect_on_last_action(self, task: Dict[str, Any], outcome: Dict[str, Any], ground_truth: Optional[Any] = None) -> None:
+        """
+        Reflect on the last action or completed task to generate insights.
+        """
+        if hasattr(self, 'reflection_engine'):
+            self.logger.info("Reflecting on last action.")
+            if ground_truth is not None:
+                await self.reflection_engine.verified_reflect(task, outcome, ground_truth)
+            else:
+                await self.reflection_engine.self_reflect(task, outcome)
+        else:
+            self.logger.warning("Reflection engine not available.")
+
     # Private helper methods
     
     async def _setup_core_modules(self) -> None:
@@ -315,11 +329,14 @@ class AgentCore:
             from ..agents.reasoning import ReasoningEngine, PlanningEngine
             from ..agents.daily_planner import DailyPlanner
             from ..agents.thought_processor import ThoughtProcessor
+            from ..agents.reflection import ReflectionEngine
+            from ..learning.web_browser import WebBrowser
             
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
             emotion_engine = EmotionEngine(self.identity.agent_id, self.identity.personality_traits)
             ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits)
+            web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
             
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
@@ -336,29 +353,34 @@ class AgentCore:
                 planning_engine, daily_planner, emotion_engine,
                 memory_system, self.identity.personality_traits
             )
-            
+            reflection_engine = ReflectionEngine(self.identity.agent_id, ai_brain, memory_system)
+
             # Register modules with dependencies
             await self.register_module("memory_system", memory_system)
             await self.register_module("emotion_engine", emotion_engine)
             await self.register_module("ai_brain", ai_brain)
+            await self.register_module("web_browser", web_browser)
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
             await self.register_module("daily_planner", daily_planner, ["ai_brain", "reasoning_engine", "planning_engine"])
-            await self.register_module("thought_processor", thought_processor, 
-                                     ["ai_brain", "reasoning_engine", "planning_engine", 
+            await self.register_module("thought_processor", thought_processor,
+                                     ["ai_brain", "reasoning_engine", "planning_engine",
                                       "daily_planner", "emotion_engine", "memory_system"])
-            
+            await self.register_module("reflection_engine", reflection_engine, ["ai_brain", "memory_system"])
+
             # Store references for easy access
             self.memory_system = memory_system
             self.emotion_engine = emotion_engine
             self.decision_maker = decision_maker
             self.ai_brain = ai_brain
+            self.web_browser = web_browser
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
             self.thought_processor = thought_processor
-            
+            self.reflection_engine = reflection_engine
+
             self.logger.info("Core modules setup completed")
             
         except Exception as e:
@@ -489,30 +511,69 @@ class AgentCore:
         return True
     
     def _should_enter_learning_phase(self) -> bool:
-        """Check if it's time to enter learning phase."""
-        # Simplified logic - would be more complex in reality
-        return False
+        """
+        Check if it's time to enter learning phase based on curiosity and time.
+        """
+        # Check if enough time has passed since the last learning session
+        if self.last_learning_time:
+            hours_since_last_learning = (datetime.now() - self.last_learning_time).total_seconds() / 3600
+            if hours_since_last_learning < self.config.learning.get("min_hours_between_learning", 4):
+                return False
+
+        # Check if curiosity is high
+        is_curious = self.state.emotional_state.get("curiosity", 0.0) > 0.8
+        return is_curious
     
     async def _enter_learning_phase(self) -> None:
-        """Enter learning phase to acquire new knowledge."""
+        """
+        Enter learning phase to acquire new knowledge based on the agent's destiny.
+        """
         self.logger.info("Entering learning phase")
         self.current_phase = LifecyclePhase.LEARNING
-        
+        self.state.status = AgentStatus.LEARNING
+        self.last_learning_time = datetime.now()
+
         try:
-            # Would integrate with learning module here
-            await asyncio.sleep(2)  # Simulate learning time
-            
+            # Determine a learning topic based on destiny
+            learning_topic = f"latest advancements in {self.identity.destiny}"
+            self.logger.info(f"Learning about: {learning_topic}")
+
+            # Use the web browser to research the topic
+            if hasattr(self, 'web_browser'):
+                search_results = await self.web_browser.search_and_browse(learning_topic)
+
+                # Store the gathered information in the knowledge base
+                for url, content in search_results.items():
+                    if content:
+                        await self.memory_system.add_to_knowledge_base(
+                            source=url,
+                            content=content,
+                            tags=[self.identity.destiny, "web_research"]
+                        )
+                self.logger.info(f"Learned from {len(search_results)} sources.")
+            else:
+                self.logger.warning("Web browser module not available for learning.")
+
             self.metrics["learning_sessions"] += 1
-            self.current_phase = LifecyclePhase.ACTIVE
             
         except Exception as e:
             self.logger.error(f"Error in learning phase: {e}")
+        finally:
+            # Return to active state
             self.current_phase = LifecyclePhase.ACTIVE
+            self.state.status = AgentStatus.ACTIVE
     
     def _should_enter_sleep_mode(self) -> bool:
-        """Check if it's time to enter sleep mode."""
-        # Simplified logic - would be more complex in reality
-        return False
+        """
+        Check if the agent should enter sleep mode based on its lifecycle duration.
+        """
+        if not self.daily_cycle_start:
+            return False
+
+        cycle_duration_hours = (datetime.now() - self.daily_cycle_start).total_seconds() / 3600
+
+        # Enter sleep if cycle duration exceeds configured lifecycle hours
+        return cycle_duration_hours >= self.config.agent_lifecycle_hours
     
     async def _enter_sleep_mode(self) -> None:
         """Enter sleep mode for code modification."""

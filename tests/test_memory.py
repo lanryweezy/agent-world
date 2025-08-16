@@ -352,6 +352,33 @@ class TestMemorySystem:
         # Cache should contain the query
         assert len(self.memory_system.retrieval_cache) > 0
 
+    @pytest.mark.asyncio
+    async def test_knowledge_base_functionality(self):
+        """Test the 'In-House Tool' knowledge base functionality."""
+        await self.memory_system.initialize()
+
+        source_url = "https://example.com/ai-research"
+        content = "A new study on meta-learning shows promising results for self-improving agents."
+        tags = ["meta-learning", "ai-research"]
+
+        # 1. Add to knowledge base
+        knowledge_id = await self.memory_system.add_to_knowledge_base(source_url, content, tags)
+        assert knowledge_id is not None
+
+        # 2. Query the knowledge base
+        query_results = await self.memory_system.query_knowledge_base("meta-learning")
+        assert len(query_results) == 1
+        assert query_results[0]["knowledge_id"] == knowledge_id
+        assert "<b>meta-learning</b>" in query_results[0]["snippet"]
+
+        # 3. Get knowledge by ID
+        retrieved_knowledge = await self.memory_system.get_knowledge_by_id(knowledge_id)
+        assert retrieved_knowledge is not None
+        assert retrieved_knowledge["knowledge_id"] == knowledge_id
+        assert retrieved_knowledge["source"] == source_url
+        assert retrieved_knowledge["content"] == content
+        assert "meta-learning" in retrieved_knowledge["tags"]
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
