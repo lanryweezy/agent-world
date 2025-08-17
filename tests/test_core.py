@@ -389,6 +389,49 @@ class TestAgentCore:
         # Assert that the metrics were updated
         assert agent.metrics["code_modifications"] == 1
 
+    async def test_economic_interactions(self):
+        """Test the agent's ability to interact with the marketplace."""
+        identity = AgentIdentity(
+            agent_id="test_agent_economy",
+            name="Econ Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to get rich",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize agent to get modules set up
+        await agent.initialize()
+
+        # Mock the marketplace methods
+        agent.marketplace.create_service_listing = AsyncMock(return_value={"success": True, "listing_id": "listing_1"})
+        agent.marketplace.search_services = AsyncMock(return_value=[{"listing_id": "listing_2", "service_name": "Test Service"}])
+        agent.marketplace.request_service = AsyncMock(return_value={"success": True, "contract_id": "contract_1"})
+
+        # 1. Test offering a service
+        from autonomous_ai_ecosystem.economy.marketplace import ServiceCategory
+        from autonomous_ai_ecosystem.economy.currency import CurrencyType
+
+        offer_result = await agent.offer_service(
+            service_name="Test Service",
+            description="A service for testing.",
+            category=ServiceCategory.RESEARCH,
+            price=50.0,
+            currency=CurrencyType.NEURAL_CREDITS
+        )
+
+        assert offer_result["success"]
+        agent.marketplace.create_service_listing.assert_awaited_once()
+
+        # 2. Test purchasing a service
+        purchase_result = await agent.find_and_purchase_service("testing")
+
+        assert purchase_result["success"]
+        agent.marketplace.search_services.assert_awaited_once_with(keywords=["testing"], available_only=True)
+        agent.marketplace.request_service.assert_awaited_once()
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

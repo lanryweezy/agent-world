@@ -97,6 +97,10 @@ class AgentCore:
             self.daily_cycle_start = datetime.now()
             self.is_running = True
             
+            # Create a wallet for the agent
+            if hasattr(self, 'currency_system'):
+                await self.currency_system.create_wallet(self.identity.agent_id)
+
             # Log birth event
             log_agent_event(
                 self.identity.agent_id,
@@ -314,6 +318,68 @@ class AgentCore:
         else:
             self.logger.warning("Reflection engine not available.")
 
+    # --- Economic Interaction Methods ---
+
+    async def offer_service(self, service_name: str, description: str, category: Any, price: float, currency: Any) -> Dict[str, Any]:
+        """
+        Offers a new service on the marketplace.
+
+        Args:
+            service_name: The name of the service.
+            description: A description of the service.
+            category: The service category (e.g., ServiceCategory.RESEARCH).
+            price: The base price for the service.
+            currency: The currency for the price (e.g., CurrencyType.NEURAL_CREDITS).
+
+        Returns:
+            A dictionary containing the result of the listing attempt.
+        """
+        if hasattr(self, 'marketplace'):
+            self.logger.info(f"Offering service '{service_name}' on the marketplace.")
+            # In a real scenario, capabilities would be dynamically assessed.
+            # For now, we assume the agent is capable of what it offers.
+            return await self.marketplace.create_service_listing(
+                provider_id=self.identity.agent_id,
+                service_name=service_name,
+                description=description,
+                category=category,
+                base_price=price,
+                currency_type=currency,
+                capabilities=[]
+            )
+        return {"success": False, "error": "Marketplace module not available."}
+
+    async def find_and_purchase_service(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        Finds a service on the marketplace and attempts to purchase the first result.
+
+        Args:
+            query: A search query to find the service.
+
+        Returns:
+            The contract details if purchase was successful, otherwise None.
+        """
+        if hasattr(self, 'marketplace'):
+            self.logger.info(f"Searching for service with query: '{query}'")
+            services = await self.marketplace.search_services(keywords=[query], available_only=True)
+
+            if not services:
+                self.logger.warning(f"No available services found for query: '{query}'")
+                return None
+
+            # Attempt to purchase the first service found
+            top_service = services[0]
+            self.logger.info(f"Attempting to purchase service '{top_service['service_name']}' ({top_service['listing_id']})")
+
+            return await self.marketplace.request_service(
+                client_id=self.identity.agent_id,
+                listing_id=top_service['listing_id'],
+                service_description=f"Service request based on query: {query}"
+            )
+
+        self.logger.error("Marketplace module not available for service purchase.")
+        return None
+
     # Private helper methods
     
     async def _setup_core_modules(self) -> None:
@@ -336,6 +402,8 @@ class AgentCore:
             from ..agents.code_analyzer import CodeAnalyzer
             from ..agents.code_modifier import CodeModifier
             from ..safety.safety_validator import ComprehensiveSafetyValidator
+            from ..economy.currency import VirtualCurrency
+            from ..economy.marketplace import ServiceMarketplace
 
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
@@ -351,6 +419,10 @@ class AgentCore:
             code_analyzer = CodeAnalyzer(self.identity.agent_id)
             code_modifier = CodeModifier(self.identity.agent_id, code_analyzer, ai_brain)
             safety_validator = ComprehensiveSafetyValidator(self.identity.agent_id)
+
+            # Setup economy modules
+            currency_system = VirtualCurrency(self.identity.agent_id)
+            marketplace = ServiceMarketplace(self.identity.agent_id, currency_system)
 
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
@@ -377,6 +449,8 @@ class AgentCore:
             await self.register_module("code_analyzer", code_analyzer)
             await self.register_module("code_modifier", code_modifier, ["code_analyzer", "ai_brain"])
             await self.register_module("safety_validator", safety_validator)
+            await self.register_module("currency_system", currency_system)
+            await self.register_module("marketplace", marketplace, ["currency_system"])
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
@@ -395,6 +469,8 @@ class AgentCore:
             self.code_analyzer = code_analyzer
             self.code_modifier = code_modifier
             self.safety_validator = safety_validator
+            self.currency_system = currency_system
+            self.marketplace = marketplace
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
