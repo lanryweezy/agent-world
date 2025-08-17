@@ -19,6 +19,7 @@ from datetime import datetime
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 from .code_analyzer import CodeAnalyzer, ModificationProposal, CodeRiskLevel
+from .brain import AIBrain
 
 
 class ModificationType(Enum):
@@ -77,9 +78,10 @@ class CodeModifier(AgentModule):
     code changes while maintaining safety and providing rollback capabilities.
     """
     
-    def __init__(self, agent_id: str, code_analyzer: CodeAnalyzer):
+    def __init__(self, agent_id: str, code_analyzer: CodeAnalyzer, brain: AIBrain):
         super().__init__(agent_id)
         self.code_analyzer = code_analyzer
+        self.brain = brain
         self.logger = get_agent_logger(agent_id, "code_modifier")
         
         # Modification tracking
@@ -425,6 +427,74 @@ class CodeModifier(AgentModule):
         except Exception as e:
             self.logger.error(f"Failed to generate code from template {template_id}: {e}")
             raise
+
+    async def propose_llm_based_modification(
+        self,
+        file_path: str,
+        goal: str,
+        target_element_name: Optional[str] = None
+    ) -> Optional[str]:
+        """
+        Uses the LLM to generate and propose a code modification.
+
+        Args:
+            file_path: The path to the file to modify.
+            goal: The high-level goal of the modification.
+            target_element_name: The specific function or class to modify.
+
+        Returns:
+            The modification ID if the proposal was successful, otherwise None.
+        """
+        try:
+            self.logger.info(f"Attempting LLM-based modification for file '{file_path}' with goal: '{goal}'")
+
+            with open(file_path, 'r', encoding='utf-8') as f:
+                original_code = f.read()
+
+            # For now, we'll assume the target is the whole file content for simplicity.
+            # A more advanced version would use the code_analyzer to find the specific element.
+            prompt = f"""
+            You are an expert Python programmer. Your task is to modify the following Python code to achieve a specific goal.
+            Respond with only the complete, new version of the code. Do not add any explanations or markdown formatting.
+
+            Goal: {goal}
+
+            Original Code:
+            ```python
+            {original_code}
+            ```
+            """
+
+            # Use the brain to generate the new code
+            new_code_thought = await self.brain.think(
+                thought_type=ThoughtType.PROBLEM_SOLVING,
+                input_data={"problem": "Modify the provided Python code to meet the goal.", "context": {"code": original_code, "goal": goal}},
+                template_id="problem_solving" # Assuming a template that can handle this
+            )
+
+            # A simple implementation would expect the new code in the 'solution' field.
+            new_code = new_code_thought.output.get("solution")
+            if not new_code:
+                self.logger.error("LLM did not provide a solution for code modification.")
+                return None
+
+            # Propose the modification (assuming a full file replacement for this example)
+            modification_id = await self.propose_modification(
+                target_file=file_path,
+                modification_type=ModificationType.MODIFY_FUNCTION, # This is a simplification
+                target_element=target_element_name or "file_content",
+                new_code=new_code,
+                justification=goal,
+                original_code=original_code
+            )
+            return modification_id
+
+        except FileNotFoundError:
+            self.logger.error(f"File not found for modification: {file_path}")
+            return None
+        except Exception as e:
+            self.logger.error(f"Failed to propose LLM-based modification: {e}")
+            return None
     
     def get_pending_modifications(self) -> List[ModificationRecord]:
         """Get all pending modifications."""

@@ -333,6 +333,9 @@ class AgentCore:
             from ..learning.web_browser import WebBrowser
             from ..tools.tool_router import ToolRouter
             from ..tools.web_tools import WebSearchTool
+            from ..agents.code_analyzer import CodeAnalyzer
+            from ..agents.code_modifier import CodeModifier
+            from ..safety.safety_validator import ComprehensiveSafetyValidator
 
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
@@ -343,6 +346,11 @@ class AgentCore:
             web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
             web_search_tool = WebSearchTool(web_browser)
             tool_router = ToolRouter(tools=[web_search_tool], brain=ai_brain, agent_id=self.identity.agent_id)
+
+            # Setup self-modification modules
+            code_analyzer = CodeAnalyzer(self.identity.agent_id)
+            code_modifier = CodeModifier(self.identity.agent_id, code_analyzer, ai_brain)
+            safety_validator = ComprehensiveSafetyValidator(self.identity.agent_id)
 
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
@@ -366,6 +374,9 @@ class AgentCore:
             await self.register_module("emotion_engine", emotion_engine)
             await self.register_module("ai_brain", ai_brain)
             await self.register_module("tool_router", tool_router, ["ai_brain"])
+            await self.register_module("code_analyzer", code_analyzer)
+            await self.register_module("code_modifier", code_modifier, ["code_analyzer", "ai_brain"])
+            await self.register_module("safety_validator", safety_validator)
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
@@ -381,6 +392,9 @@ class AgentCore:
             self.decision_maker = decision_maker
             self.ai_brain = ai_brain
             self.tool_router = tool_router
+            self.code_analyzer = code_analyzer
+            self.code_modifier = code_modifier
+            self.safety_validator = safety_validator
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
@@ -590,19 +604,42 @@ class AgentCore:
         await self.enter_sleep_mode()
     
     async def _enter_modification_phase(self) -> None:
-        """Allow agent to modify its own code during sleep."""
-        self.logger.info("Entering code modification phase")
+        """
+        Allow agent to propose modifications to its own code during sleep.
+        """
+        self.logger.info("Entering code modification phase.")
         self.current_phase = LifecyclePhase.MODIFYING
         
         try:
-            # Would integrate with code modification module here
-            await asyncio.sleep(1)  # Simulate modification time
+            if not hasattr(self, 'code_modifier'):
+                self.logger.warning("CodeModifier module not available. Skipping modification phase.")
+                return
+
+            # Define a simple, safe modification goal
+            # In a more advanced implementation, this goal would be derived from self-reflection
+            modification_goal = "Add a more detailed docstring to the `think_about_situation` function in the `AgentCore` class, explaining its purpose and parameters."
+            target_file = "autonomous_ai_ecosystem/core/agent_core.py"
+            target_element = "think_about_situation"
             
-            self.metrics["code_modifications"] += 1
-            self.current_phase = LifecyclePhase.SLEEPING
-            
+            self.logger.info(f"Self-modification goal: {modification_goal}")
+
+            # Use the CodeModifier to propose a change based on the goal
+            modification_id = await self.code_modifier.propose_llm_based_modification(
+                file_path=target_file,
+                goal=modification_goal,
+                target_element_name=target_element
+            )
+
+            if modification_id:
+                self.logger.info(f"Successfully proposed modification {modification_id}. In a real scenario, this would be validated and potentially applied.")
+                self.metrics["code_modifications"] += 1
+            else:
+                self.logger.error("Failed to propose a self-modification.")
+
         except Exception as e:
-            self.logger.error(f"Error in modification phase: {e}")
+            self.logger.error(f"An error occurred during the modification phase: {e}")
+        finally:
+            # Always return to sleeping phase after attempting modification
             self.current_phase = LifecyclePhase.SLEEPING
     
     async def _validate_code_changes(self) -> bool:

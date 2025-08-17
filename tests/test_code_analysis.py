@@ -276,9 +276,16 @@ class TestCodeModifier:
         return analyzer
     
     @pytest.fixture
-    def code_modifier(self, mock_code_analyzer):
+    def mock_brain(self):
+        """Create a mock AIBrain."""
+        brain = Mock(spec=AIBrain)
+        brain.think = AsyncMock()
+        return brain
+
+    @pytest.fixture
+    def code_modifier(self, mock_code_analyzer, mock_brain):
         """Create a CodeModifier instance for testing."""
-        return CodeModifier("test_agent", mock_code_analyzer)
+        return CodeModifier("test_agent", mock_code_analyzer, mock_brain)
     
     @pytest.mark.asyncio
     async def test_initialization(self, code_modifier):
@@ -430,6 +437,36 @@ class TestCodeModifier:
         assert "result = x + y" in code
         assert "return result" in code
     
+    @pytest.mark.asyncio
+    async def test_propose_llm_based_modification(self, code_modifier, mock_brain):
+        """Test the LLM-based modification proposal workflow."""
+        # --- Arrange ---
+        file_path = "test_file.py"
+        goal = "Add a docstring to the function."
+        original_code = "def my_func():\n    return 1"
+        new_code_from_llm = 'def my_func():\n    """This is a new docstring."""\n    return 1'
+
+        # Mock the brain's response
+        mock_brain.think.return_value = Mock(output={"solution": new_code_from_llm})
+
+        # Mock the file system
+        with patch("builtins.open", unittest.mock.mock_open(read_data=original_code)), \
+             patch.object(code_modifier, 'propose_modification', new_callable=AsyncMock) as mock_propose:
+
+            # --- Act ---
+            modification_id = await code_modifier.propose_llm_based_modification(file_path, goal)
+
+            # --- Assert ---
+            # 1. Assert that the brain was called to think about the modification
+            mock_brain.think.assert_awaited_once()
+
+            # 2. Assert that the internal propose_modification was called with the new code
+            mock_propose.assert_awaited_once()
+            call_args = mock_propose.call_args[1]
+            assert call_args['target_file'] == file_path
+            assert call_args['new_code'] == new_code_from_llm
+            assert call_args['justification'] == goal
+
     @pytest.mark.asyncio
     async def test_backup_creation(self, code_modifier):
         """Test backup file creation."""

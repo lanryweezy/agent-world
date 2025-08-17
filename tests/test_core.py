@@ -361,6 +361,34 @@ class TestAgentCore:
         assert store_call_args['source'] == "https://example.com/quantum"
         assert "Content about quantum physics" in store_call_args['content']
 
+    @patch('autonomous_ai_ecosystem.agents.code_modifier.CodeModifier')
+    async def test_modification_phase(self, MockCodeModifier):
+        """Test that the modification phase correctly uses the CodeModifier."""
+        identity = AgentIdentity(
+            agent_id="test_agent_modifier",
+            name="Modifier Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="to improve itself",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize agent and mock the code_modifier
+        await agent.initialize()
+        mock_modifier_instance = agent.code_modifier
+        mock_modifier_instance.propose_llm_based_modification = AsyncMock(return_value="mod_12345")
+
+        # Call the modification phase
+        await agent._enter_modification_phase()
+
+        # Assert that the code modifier was called
+        mock_modifier_instance.propose_llm_based_modification.assert_awaited_once()
+
+        # Assert that the metrics were updated
+        assert agent.metrics["code_modifications"] == 1
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
