@@ -379,6 +379,45 @@ class TestMemorySystem:
         assert retrieved_knowledge["content"] == content
         assert "meta-learning" in retrieved_knowledge["tags"]
 
+    @pytest.mark.asyncio
+    async def test_retrieve_relevant_experiences(self):
+        """Test the retrieval of relevant experiences."""
+        await self.memory_system.initialize()
+
+        # Store a relevant experience
+        experience1 = self.memory_system.create_memory(
+            content="Learned that for complex calculations, it's best to use a calculator tool.",
+            memory_type="procedural",
+            tags=["experience", "calculation", "tools"]
+        )
+        await self.memory_system.store_memory(experience1)
+
+        # Store another relevant experience
+        experience2 = self.memory_system.create_memory(
+            content="When performing calculations, always double check the inputs.",
+            memory_type="procedural",
+            tags=["experience", "calculation", "verification"]
+        )
+        await self.memory_system.store_memory(experience2)
+
+        # Store an irrelevant memory
+        other_memory = self.memory_system.create_memory(
+            content="The sky is blue.",
+            memory_type="semantic",
+            tags=["facts", "nature"]
+        )
+        await self.memory_system.store_memory(other_memory)
+
+        # Retrieve experiences related to "calculations"
+        results = await self.memory_system.retrieve_relevant_experiences("calculations", limit=2)
+
+        # Assertions
+        assert len(results) == 2
+        result_ids = {mem.memory_id for mem in results}
+        assert experience1.memory_id in result_ids
+        assert experience2.memory_id in result_ids
+        assert other_memory.memory_id not in result_ids
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

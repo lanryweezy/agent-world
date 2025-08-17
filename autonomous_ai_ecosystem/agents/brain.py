@@ -66,16 +66,19 @@ class PromptTemplate:
     temperature: float = 0.7
 
 
+from ..agents.memory import MemorySystem
+
 class AIBrain(AgentModule):
     """
     AI Brain that integrates with various LLM providers for reasoning,
     planning, and intelligent behavior generation.
     """
     
-    def __init__(self, agent_id: str, config: LLMConfig, personality_traits: Dict[str, float]):
+    def __init__(self, agent_id: str, config: LLMConfig, personality_traits: Dict[str, float], memory_system: MemorySystem):
         super().__init__(agent_id)
         self.config = config
         self.personality_traits = personality_traits
+        self.memory = memory_system
         self.logger = get_agent_logger(agent_id, "ai_brain")
         
         # LLM clients
@@ -168,7 +171,18 @@ class AIBrain(AgentModule):
             template = self._select_template(thought_type, template_id)
             if not template:
                 raise ValueError(f"No template found for thought type: {thought_type}")
-            
+
+            # --- Dynamic Context Engineering ---
+            # Retrieve relevant experiences to inject into the context
+            task_description = input_data.get("situation") or input_data.get("objective") or input_data.get("problem")
+            if task_description and hasattr(self, 'memory'):
+                experiences = await self.memory.retrieve_relevant_experiences(task_description)
+                if experiences:
+                    # Add experiences to the context for prompt generation
+                    context = context or {}
+                    context["experiences"] = [exp.content for exp in experiences]
+            # --- End Dynamic Context Engineering ---
+
             # Generate prompt
             prompt = self._generate_prompt(template, input_data, context or {})
             
@@ -716,11 +730,23 @@ Format your response as JSON with keys: social_analysis, relationship_insights, 
         try:
             # Combine input data and context
             all_data = {**input_data, **context}
+
+            experience_prompt_section = ""
+            if "experiences" in all_data and all_data["experiences"]:
+                experience_list = "\n".join(f"- {exp}" for exp in all_data["experiences"])
+                experience_prompt_section = f"""
+Before you begin, review these past experiences. They are your accumulated wisdom.
+
+--- PAST EXPERIENCES ---
+{experience_list}
+--- END OF EXPERIENCES ---
+
+"""
             
             # Format template with data
-            prompt = template.template.format(**all_data)
+            main_prompt = template.template.format(**all_data)
             
-            return prompt
+            return f"{experience_prompt_section}{main_prompt}"
             
         except KeyError as e:
             self.logger.error(f"Missing template variable: {e}")

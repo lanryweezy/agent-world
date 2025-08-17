@@ -322,6 +322,45 @@ class TestAgentCore:
         # Assert that sleep mode was entered
         mock_enter_sleep_mode.assert_called()
 
+    @patch('autonomous_ai_ecosystem.tools.tool_router.ToolRouter')
+    async def test_learning_phase_with_tool_router(self, MockToolRouter):
+        """Test that the learning phase correctly uses the ToolRouter."""
+        identity = AgentIdentity(
+            agent_id="test_agent_learning",
+            name="Learner Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="quantum physics",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # We need to manually initialize modules to inject our mock
+        await agent.initialize()
+        mock_router_instance = agent.tool_router
+        mock_router_instance.route_request = AsyncMock(return_value={
+            "https://example.com/quantum": "Content about quantum physics."
+        })
+
+        # Mock the memory system's method to check it's called
+        agent.memory_system.add_to_knowledge_base = AsyncMock()
+
+        # Call the learning phase
+        await agent._enter_learning_phase()
+
+        # Assert that the tool router was called with the correct request
+        mock_router_instance.route_request.assert_awaited_once()
+        request_arg = mock_router_instance.route_request.call_args[0][0]
+        assert "Research" in request_arg
+        assert "quantum physics" in request_arg
+
+        # Assert that the result was processed and stored in memory
+        agent.memory_system.add_to_knowledge_base.assert_awaited_once()
+        store_call_args = agent.memory_system.add_to_knowledge_base.call_args[1]
+        assert store_call_args['source'] == "https://example.com/quantum"
+        assert "Content about quantum physics" in store_call_args['content']
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

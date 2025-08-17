@@ -331,13 +331,19 @@ class AgentCore:
             from ..agents.thought_processor import ThoughtProcessor
             from ..agents.reflection import ReflectionEngine
             from ..learning.web_browser import WebBrowser
-            
+            from ..tools.tool_router import ToolRouter
+            from ..tools.web_tools import WebSearchTool
+
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
             emotion_engine = EmotionEngine(self.identity.agent_id, self.identity.personality_traits)
-            ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits)
-            web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
+            ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits, memory_system)
             
+            # Setup Tools and ToolRouter
+            web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
+            web_search_tool = WebSearchTool(web_browser)
+            tool_router = ToolRouter(tools=[web_search_tool], brain=ai_brain, agent_id=self.identity.agent_id)
+
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
             
@@ -359,7 +365,7 @@ class AgentCore:
             await self.register_module("memory_system", memory_system)
             await self.register_module("emotion_engine", emotion_engine)
             await self.register_module("ai_brain", ai_brain)
-            await self.register_module("web_browser", web_browser)
+            await self.register_module("tool_router", tool_router, ["ai_brain"])
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
@@ -374,7 +380,7 @@ class AgentCore:
             self.emotion_engine = emotion_engine
             self.decision_maker = decision_maker
             self.ai_brain = ai_brain
-            self.web_browser = web_browser
+            self.tool_router = tool_router
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
@@ -534,25 +540,29 @@ class AgentCore:
         self.last_learning_time = datetime.now()
 
         try:
-            # Determine a learning topic based on destiny
-            learning_topic = f"latest advancements in {self.identity.destiny}"
-            self.logger.info(f"Learning about: {learning_topic}")
+            # Formulate a natural language request based on the agent's destiny
+            request = f"Research the latest advancements and news about {self.identity.destiny}"
+            self.logger.info(f"Formulated learning request: '{request}'")
 
-            # Use the web browser to research the topic
-            if hasattr(self, 'web_browser'):
-                search_results = await self.web_browser.search_and_browse(learning_topic)
+            # Use the ToolRouter to handle the request
+            if hasattr(self, 'tool_router'):
+                # The result should be from the web_search tool, which returns a dict
+                search_results = await self.tool_router.route_request(request)
 
-                # Store the gathered information in the knowledge base
-                for url, content in search_results.items():
-                    if content:
-                        await self.memory_system.add_to_knowledge_base(
-                            source=url,
-                            content=content,
-                            tags=[self.identity.destiny, "web_research"]
-                        )
-                self.logger.info(f"Learned from {len(search_results)} sources.")
+                if isinstance(search_results, dict) and "error" not in search_results:
+                    # Store the gathered information in the knowledge base
+                    for url, content in search_results.items():
+                        if content:
+                            await self.memory_system.add_to_knowledge_base(
+                                source=url,
+                                content=content,
+                                tags=[self.identity.destiny, "web_research", "learning_phase"]
+                            )
+                    self.logger.info(f"Learning complete. Stored content from {len(search_results)} sources.")
+                else:
+                    self.logger.error(f"Learning phase failed: ToolRouter returned an error: {search_results}")
             else:
-                self.logger.warning("Web browser module not available for learning.")
+                self.logger.warning("Tool router not available for learning.")
 
             self.metrics["learning_sessions"] += 1
             

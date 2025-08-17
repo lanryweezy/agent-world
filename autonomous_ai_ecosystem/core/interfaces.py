@@ -690,3 +690,32 @@ class MemoryInterface(ABC):
     async def consolidate_memories(self) -> None:
         """Consolidate short-term memories to long-term."""
         pass
+
+
+class ToolInterface(ABC):
+    """Abstract base class for all tools available to agents."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """The unique name of the tool."""
+        pass
+
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        """A description of what the tool does, used by the ToolRouter."""
+        pass
+
+    @abstractmethod
+    async def execute(self, **kwargs) -> Any:
+        """
+        Execute the tool with the given arguments.
+
+        Args:
+            **kwargs: The arguments required by the tool.
+
+        Returns:
+            The result of the tool's execution.
+        """
+        pass

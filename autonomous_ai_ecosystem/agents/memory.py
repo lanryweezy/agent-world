@@ -518,6 +518,45 @@ class MemorySystem(AgentModule, MemoryInterface):
         except Exception as e:
             self.logger.error(f"Failed to get recent memories: {e}")
             return []
+
+    async def retrieve_relevant_experiences(self, query: str, limit: int = 3) -> List[Memory]:
+        """
+        Retrieves relevant procedural memories (experiences) based on a query.
+
+        This method is specifically designed to find past experiences that can
+        inform current decision-making.
+
+        Args:
+            query: The description of the current task or situation.
+            limit: The maximum number of experiences to return.
+
+        Returns:
+            A list of relevant Memory objects tagged as 'experience'.
+        """
+        try:
+            self.logger.debug(f"Retrieving relevant experiences for query: {query}")
+            # We specifically look for procedural memories tagged as 'experience'
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                # Search for memories containing the 'experience' tag and matching the query
+                # Note: This LIKE search is basic. For better performance on large datasets, a dedicated FTS table for experiences might be better.
+                cursor = conn.execute("""
+                    SELECT * FROM memories
+                    WHERE (memory_type = 'procedural' OR tags LIKE '%"experience"%')
+                    AND content LIKE ?
+                    ORDER BY importance DESC, timestamp DESC
+                    LIMIT ?
+                """, (f"%{query}%", limit))
+
+                rows = cursor.fetchall()
+                results = [self._row_to_memory(row) for row in rows]
+
+            self.logger.info(f"Retrieved {len(results)} relevant experiences for query.")
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve relevant experiences: {e}")
+            return []
     
     # Private helper methods
     

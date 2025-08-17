@@ -15,6 +15,7 @@ from autonomous_ai_ecosystem.agents.reasoning import (
 )
 from autonomous_ai_ecosystem.core.config import LLMConfig
 from autonomous_ai_ecosystem.utils.generators import generate_personality_traits
+from autonomous_ai_ecosystem.agents.memory import MemorySystem
 
 
 class TestAIBrain:
@@ -31,7 +32,12 @@ class TestAIBrain:
             temperature=0.7
         )
         self.personality_traits = generate_personality_traits()
-        self.ai_brain = AIBrain(self.agent_id, self.config, self.personality_traits)
+
+        # Mock MemorySystem
+        self.mock_memory_system = Mock(spec=MemorySystem)
+        self.mock_memory_system.retrieve_relevant_experiences = AsyncMock(return_value=[])
+
+        self.ai_brain = AIBrain(self.agent_id, self.config, self.personality_traits, self.mock_memory_system)
     
     def teardown_method(self):
         """Clean up test environment."""
@@ -173,3 +179,43 @@ class TestAIBrain:
         assert stats["total_thoughts"] == 10
         assert stats["successful_thoughts"] == 8
         assert stats["failed_thoughts"] == 2
+
+    @pytest.mark.asyncio
+    async def test_think_with_dynamic_context(self):
+        """Test that the think method retrieves and uses experiences."""
+        # --- Arrange ---
+        # Mock the LLM response
+        mock_llm_response = '{"analysis": "Analysis based on experience", "insights": []}'
+
+        # Mock the experience to be returned by the memory system
+        mock_experience = Mock()
+        mock_experience.content = "Past experience: Complex calculations are prone to error."
+        self.mock_memory_system.retrieve_relevant_experiences.return_value = [mock_experience]
+
+        input_data = {
+            "situation": "A complex calculation is required.",
+            "available_data": {},
+            "goals": []
+        }
+
+        # --- Act ---
+        # We patch _get_llm_response to avoid actual API calls
+        # and _generate_prompt to capture the prompt that was built.
+        with patch.object(self.ai_brain, '_get_llm_response', return_value=mock_llm_response) as mock_get_response, \
+             patch.object(self.ai_brain, '_generate_prompt', wraps=self.ai_brain._generate_prompt) as mock_generate_prompt:
+
+            await self.ai_brain.think(ThoughtType.ANALYSIS, input_data)
+
+            # --- Assert ---
+            # 1. Assert that the memory system was queried
+            self.mock_memory_system.retrieve_relevant_experiences.assert_awaited_once_with("A complex calculation is required.")
+
+            # 2. Assert that the generated prompt includes the experience
+            mock_generate_prompt.assert_called_once()
+            final_prompt = mock_generate_prompt.call_args[0][0].template.format(**mock_generate_prompt.call_args[0][1])
+
+            # We can't easily get the final formatted string back due to the new implementation,
+            # so we'll check the context passed to the generation function.
+            passed_context = mock_generate_prompt.call_args[0][2]
+            assert "experiences" in passed_context
+            assert passed_context["experiences"][0] == mock_experience.content

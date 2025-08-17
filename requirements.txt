@@ -13,7 +13,6 @@ torch>=2.1.0
 
 # Database and storage
 sqlalchemy>=2.0.0
-sqlite3  # Built-in with Python
 redis>=5.0.0
 pymongo>=4.6.0
 
