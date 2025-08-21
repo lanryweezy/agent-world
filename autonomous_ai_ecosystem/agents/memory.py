@@ -557,6 +557,40 @@ class MemorySystem(AgentModule, MemoryInterface):
         except Exception as e:
             self.logger.error(f"Failed to retrieve relevant experiences: {e}")
             return []
+
+    async def retrieve_failures(self, limit: int = 5) -> List[Memory]:
+        """
+        Retrieves memories of past failures.
+
+        This method is used to provide the agent with its own past mistakes to
+        learn from and generate self-modification goals.
+
+        Args:
+            limit: The maximum number of failure memories to return.
+
+        Returns:
+            A list of the most recent and important failure memories.
+        """
+        try:
+            self.logger.debug(f"Retrieving up to {limit} most recent failure memories.")
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.execute("""
+                    SELECT * FROM memories
+                    WHERE tags LIKE '%"failure"%'
+                    ORDER BY importance DESC, timestamp DESC
+                    LIMIT ?
+                """, (limit,))
+
+                rows = cursor.fetchall()
+                results = [self._row_to_memory(row) for row in rows]
+
+            self.logger.info(f"Retrieved {len(results)} failure memories.")
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Failed to retrieve failure memories: {e}")
+            return []
     
     # Private helper methods
     

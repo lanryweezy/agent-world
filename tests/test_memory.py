@@ -418,6 +418,35 @@ class TestMemorySystem:
         assert experience2.memory_id in result_ids
         assert other_memory.memory_id not in result_ids
 
+    @pytest.mark.asyncio
+    async def test_retrieve_failures(self):
+        """Test the retrieval of failure memories."""
+        await self.memory_system.initialize()
+
+        # Store a failure memory
+        failure_memory = self.memory_system.create_memory(
+            content="A task failed because of a calculation error.",
+            memory_type="procedural",
+            tags=["experience", "failure", "calculation"]
+        )
+        await self.memory_system.store_memory(failure_memory)
+
+        # Store a success memory
+        success_memory = self.memory_system.create_memory(
+            content="A task succeeded.",
+            memory_type="procedural",
+            tags=["experience", "success"]
+        )
+        await self.memory_system.store_memory(success_memory)
+
+        # Retrieve failures
+        results = await self.memory_system.retrieve_failures(limit=5)
+
+        # Assertions
+        assert len(results) == 1
+        assert results[0].memory_id == failure_memory.memory_id
+        assert "failure" in results[0].tags
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

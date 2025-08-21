@@ -681,36 +681,55 @@ class AgentCore:
     
     async def _enter_modification_phase(self) -> None:
         """
-        Allow agent to propose modifications to its own code during sleep.
+        Allow agent to propose modifications to its own code during sleep,
+        driven by an analysis of its past failures.
         """
         self.logger.info("Entering code modification phase.")
         self.current_phase = LifecyclePhase.MODIFYING
         
         try:
-            if not hasattr(self, 'code_modifier'):
-                self.logger.warning("CodeModifier module not available. Skipping modification phase.")
+            if not all(hasattr(self, m) for m in ['memory_system', 'ai_brain', 'code_modifier']):
+                self.logger.warning("Missing required modules for self-modification. Skipping.")
                 return
 
-            # Define a simple, safe modification goal
-            # In a more advanced implementation, this goal would be derived from self-reflection
-            modification_goal = "Add a more detailed docstring to the `think_about_situation` function in the `AgentCore` class, explaining its purpose and parameters."
-            target_file = "autonomous_ai_ecosystem/core/agent_core.py"
-            target_element = "think_about_situation"
-            
-            self.logger.info(f"Self-modification goal: {modification_goal}")
+            # 1. Retrieve recent failures
+            failures = await self.memory_system.retrieve_failures(limit=5)
+            if not failures:
+                self.logger.info("No recent failures found. No self-modification needed at this time.")
+                return
 
-            # Use the CodeModifier to propose a change based on the goal
+            # 2. Synthesize a modification goal from failures
+            failure_descriptions = [f.content for f in failures]
+            goal_synthesis_prompt = {
+                "problem": "Based on the following list of my past failures, what is a single, high-level goal for improving my own code to prevent these failures in the future? The goal should be a concise instruction for a programmer.",
+                "context": {"failures": failure_descriptions},
+                "constraints": ["The goal should be actionable and target a potential root cause.", "Output only the goal as a single sentence."]
+            }
+            
+            synthesis_thought = await self.ai_brain.solve_problem(**goal_synthesis_prompt)
+            modification_goal = synthesis_thought.get("solution")
+
+            if not modification_goal:
+                self.logger.error("Could not synthesize a modification goal from failures.")
+                return
+
+            self.logger.info(f"Synthesized self-modification goal from failures: {modification_goal}")
+
+            # 3. Propose the modification
+            # For now, we'll target the agent's own core file as a default.
+            # A more advanced agent would use its code_analyzer to find the best file to modify.
+            target_file = "autonomous_ai_ecosystem/core/agent_core.py"
+
             modification_id = await self.code_modifier.propose_llm_based_modification(
                 file_path=target_file,
-                goal=modification_goal,
-                target_element_name=target_element
+                goal=modification_goal
             )
 
             if modification_id:
-                self.logger.info(f"Successfully proposed modification {modification_id}. In a real scenario, this would be validated and potentially applied.")
+                self.logger.info(f"Successfully proposed modification {modification_id} based on past failures.")
                 self.metrics["code_modifications"] += 1
             else:
-                self.logger.error("Failed to propose a self-modification.")
+                self.logger.error(f"Failed to propose a self-modification based on goal: {modification_goal}")
 
         except Exception as e:
             self.logger.error(f"An error occurred during the modification phase: {e}")

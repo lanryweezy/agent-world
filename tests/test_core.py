@@ -432,6 +432,53 @@ class TestAgentCore:
         agent.marketplace.search_services.assert_awaited_once_with(keywords=["testing"], available_only=True)
         agent.marketplace.request_service.assert_awaited_once()
 
+    @patch('autonomous_ai_ecosystem.agents.memory.MemorySystem')
+    @patch('autonomous_ai_ecosystem.agents.brain.AIBrain')
+    @patch('autonomous_ai_ecosystem.agents.code_modifier.CodeModifier')
+    async def test_modification_phase_is_experience_driven(self, MockCodeModifier, MockAIBrain, MockMemorySystem):
+        """Test that the modification phase is driven by past failures."""
+        identity = AgentIdentity(
+            agent_id="test_agent_exp_modifier",
+            name="Smart Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="to learn from mistakes",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Manually attach mocked modules
+        agent.memory_system = MockMemorySystem()
+        agent.ai_brain = MockAIBrain()
+        agent.code_modifier = MockCodeModifier()
+
+        # Mock the module return values
+        mock_failure_memory = Mock()
+        mock_failure_memory.content = "Failed to calculate trajectory."
+        agent.memory_system.retrieve_failures = AsyncMock(return_value=[mock_failure_memory])
+
+        synthesized_goal = "Improve the trajectory calculation logic."
+        agent.ai_brain.solve_problem = AsyncMock(return_value={"solution": synthesized_goal})
+
+        agent.code_modifier.propose_llm_based_modification = AsyncMock(return_value="mod_67890")
+
+        # Call the modification phase
+        await agent._enter_modification_phase()
+
+        # 1. Assert that failures were retrieved from memory
+        agent.memory_system.retrieve_failures.assert_awaited_once()
+
+        # 2. Assert that the brain was asked to synthesize a goal
+        agent.ai_brain.solve_problem.assert_awaited_once()
+        prompt_context = agent.ai_brain.solve_problem.call_args[1]['context']
+        assert mock_failure_memory.content in prompt_context['failures']
+
+        # 3. Assert that the code modifier was called with the synthesized goal
+        agent.code_modifier.propose_llm_based_modification.assert_awaited_once()
+        call_goal = agent.code_modifier.propose_llm_based_modification.call_args[1]['goal']
+        assert call_goal == synthesized_goal
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -125,25 +125,29 @@ class ReflectionEngine(AgentModule):
         experience_text = await self.brain.generate_text(prompt, max_tokens=200)
 
         if experience_text:
-            await self._store_experience(experience_text, "verified_reflection")
+            await self._store_experience(experience_text, "verified_reflection", is_success=is_success)
             return experience_text
 
         return None
 
-    async def _store_experience(self, experience_text: str, reflection_type: str) -> None:
+    async def _store_experience(self, experience_text: str, reflection_type: str, is_success: bool = True) -> None:
         """
         Stores a distilled experience in the agent's memory.
         """
         from datetime import datetime
         import uuid
 
+        tags = ["experience", reflection_type]
+        if not is_success:
+            tags.append("failure")
+
         experience_memory = Memory(
             memory_id=f"mem-exp-{uuid.uuid4()}",
             content=experience_text,
             memory_type="procedural", # Experiences become procedural knowledge
-            importance=0.8, # Reflections are highly important
+            importance=0.8 if is_success else 0.9, # Failures are very important to remember
             timestamp=datetime.now(),
             agent_id=self.agent_id,
-            tags=["experience", reflection_type],
+            tags=tags,
         )
         await self.memory.store_memory(experience_memory)

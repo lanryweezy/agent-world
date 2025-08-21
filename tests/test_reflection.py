@@ -126,6 +126,9 @@ class TestReflectionEngine(unittest.TestCase):
         prompt = self.mock_brain.generate_text.call_args[0][0]
         self.assertIn("Success: No", prompt)
 
+        # Verify that the 'failure' tag was added to the memory
+        self.assertIn("failure", stored_memory_arg.tags)
+
 
 if __name__ == '__main__':
     unittest.main()
