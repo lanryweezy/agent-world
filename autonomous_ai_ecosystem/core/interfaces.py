@@ -23,7 +23,7 @@ class MessageType(Enum):
     COLLABORATION_REQUEST = "collaboration_request"
     TASK_ASSIGNMENT = "task_assignment"
     STATUS_UPDATE = "status_update"
-    REPRODUCTION_REQUEST = "reproduction_request"
+    REPRODUCTION_PROPOSAL = "reproduction_proposal"
     HUMAN_COMMAND = "human_command"
 
 

@@ -143,6 +143,9 @@ class AgentCore:
                     await self._enter_sleep_mode()
                     break
                 
+                # Periodically consider reproduction
+                await self._consider_reproduction()
+
                 # Brief pause to prevent busy waiting
                 await asyncio.sleep(1)
             
@@ -404,6 +407,10 @@ class AgentCore:
             from ..safety.safety_validator import ComprehensiveSafetyValidator
             from ..economy.currency import VirtualCurrency
             from ..economy.marketplace import ServiceMarketplace
+            from ..agents.genetics import GeneticAlgorithm
+            from ..agents.reproduction_manager import ReproductionManager
+            from ..agents.social_manager import SocialManager
+            from ..agents.status_manager import StatusManager
 
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
@@ -423,6 +430,12 @@ class AgentCore:
             # Setup economy modules
             currency_system = VirtualCurrency(self.identity.agent_id)
             marketplace = ServiceMarketplace(self.identity.agent_id, currency_system)
+
+            # Setup social and reproduction modules
+            social_manager = SocialManager(self.identity.agent_id)
+            status_manager = StatusManager(self.identity.agent_id)
+            genetic_algorithm = GeneticAlgorithm(self.identity.agent_id)
+            reproduction_manager = ReproductionManager(self.identity.agent_id, genetic_algorithm, social_manager, status_manager, emotion_engine)
 
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
@@ -451,6 +464,10 @@ class AgentCore:
             await self.register_module("safety_validator", safety_validator)
             await self.register_module("currency_system", currency_system)
             await self.register_module("marketplace", marketplace, ["currency_system"])
+            await self.register_module("social_manager", social_manager)
+            await self.register_module("status_manager", status_manager)
+            await self.register_module("genetic_algorithm", genetic_algorithm)
+            await self.register_module("reproduction_manager", reproduction_manager, ["genetic_algorithm", "social_manager", "status_manager", "emotion_engine"])
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
@@ -471,6 +488,10 @@ class AgentCore:
             self.safety_validator = safety_validator
             self.currency_system = currency_system
             self.marketplace = marketplace
+            self.social_manager = social_manager
+            self.status_manager = status_manager
+            self.genetic_algorithm = genetic_algorithm
+            self.reproduction_manager = reproduction_manager
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
@@ -775,6 +796,8 @@ class AgentCore:
                 await self._handle_knowledge_message(message)
             elif message.message_type == MessageType.COMMAND:
                 await self._handle_command_message(message)
+            elif message.message_type == MessageType.REPRODUCTION_PROPOSAL:
+                await self._handle_reproduction_proposal_message(message)
             else:
                 self.logger.warning(f"Unknown message type: {message.message_type}")
         except Exception as e:
@@ -803,3 +826,51 @@ class AgentCore:
     async def _handle_priority_message(self, message: AgentMessage) -> None:
         """Handle high-priority messages immediately."""
         await self._handle_message(message)
+
+    async def _handle_reproduction_proposal_message(self, message: AgentMessage) -> None:
+        """Handles an incoming reproduction proposal from another agent."""
+        if not hasattr(self, 'reproduction_manager'):
+            return
+
+        proposal_id = message.content.get("proposal_id")
+        proposer_id = message.sender_id
+        self.logger.info(f"Received reproduction proposal {proposal_id} from {proposer_id}.")
+
+        # Agent decides whether to accept
+        desire = await self.reproduction_manager.assess_reproduction_readiness(self.identity.agent_id)
+
+        # Simple logic: accept if motivation is high and proposer is a preferred partner
+        accept = False
+        if desire.motivation_score > 0.7 and proposer_id in desire.preferred_partners:
+            accept = True
+            self.logger.info(f"Accepting reproduction proposal from {proposer_id}.")
+        else:
+            self.logger.info(f"Rejecting reproduction proposal from {proposer_id}.")
+
+        await self.reproduction_manager.respond_to_proposal(proposal_id, accept=accept)
+
+    async def _consider_reproduction(self) -> None:
+        """Periodically considers if the agent should attempt to reproduce."""
+        if not hasattr(self, 'reproduction_manager'):
+            return
+
+        # Simple trigger: consider every so often, not on every cycle
+        if random.random() < 0.01: # 1% chance per cycle
+            desire = await self.reproduction_manager.assess_reproduction_readiness(self.identity.agent_id)
+
+            if desire.readiness_level in ["ready", "eager"] and desire.preferred_partners:
+                # Propose to the first preferred partner
+                partner_id = desire.preferred_partners[0]
+                self.logger.info(f"Feeling ready to reproduce. Proposing to {partner_id}.")
+
+                try:
+                    proposal_id = await self.reproduction_manager.propose_reproduction(self.identity.agent_id, partner_id)
+
+                    # Send a message to the target agent to notify them of the proposal
+                    # In a real system, a more robust communication channel would be used
+                    # For now, we assume the other agent can be messaged directly if its core is known
+                    # This part is complex as it requires inter-agent communication, which is not fully implemented
+                    self.logger.info(f"Sent reproduction proposal {proposal_id} to {partner_id}. (Simulation only, no actual message sent).")
+
+                except Exception as e:
+                    self.logger.error(f"Failed to propose reproduction to {partner_id}: {e}")

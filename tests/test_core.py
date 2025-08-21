@@ -479,6 +479,48 @@ class TestAgentCore:
         call_goal = agent.code_modifier.propose_llm_based_modification.call_args[1]['goal']
         assert call_goal == synthesized_goal
 
+    @patch('autonomous_ai_ecosystem.agents.reproduction_manager.ReproductionManager')
+    async def test_reproduction_proposal_handling(self, MockReproductionManager):
+        """Test that the agent core correctly handles a reproduction proposal message."""
+        identity = AgentIdentity(
+            agent_id="test_agent_repro_responder",
+            name="Responder Agent",
+            gender=AgentGender.FEMALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to respond to proposals",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+        await agent.initialize()
+
+        # Manually attach mocked manager
+        agent.reproduction_manager = MockReproductionManager()
+        agent.reproduction_manager.respond_to_proposal = AsyncMock()
+        agent.reproduction_manager.assess_reproduction_readiness = AsyncMock(
+            return_value=Mock(motivation_score=0.8, preferred_partners=["proposer_agent"])
+        )
+
+        # Create and process a proposal message
+        proposal_message = AgentMessage(
+            message_id="repro_msg_1",
+            sender_id="proposer_agent",
+            recipient_id=agent.identity.agent_id,
+            message_type=MessageType.REPRODUCTION_PROPOSAL,
+            content={"proposal_id": "proposal_123"},
+            timestamp=datetime.now()
+        )
+        await agent.process_message(proposal_message)
+
+        # We need to run the message handling part of the cycle
+        await agent._process_pending_messages()
+
+        # Assert that the reproduction manager was called to respond
+        agent.reproduction_manager.respond_to_proposal.assert_awaited_once_with(
+            "proposal_123",
+            accept=True
+        )
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
