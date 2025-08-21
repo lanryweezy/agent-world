@@ -23,6 +23,9 @@ from autonomous_ai_ecosystem.utils.generators import (
 )
 
 
+from autonomous_ai_ecosystem.world.virtual_world import VirtualWorld
+from autonomous_ai_ecosystem.world.construction import ConstructionManager
+
 class EcosystemManager:
     """Main manager for the autonomous AI ecosystem."""
     
@@ -34,6 +37,8 @@ class EcosystemManager:
         )
         
         self.agents: List[AgentCore] = []
+        self.virtual_world: Optional[VirtualWorld] = None
+        self.construction_manager: Optional[ConstructionManager] = None
         self.is_running = False
         self.shutdown_event = asyncio.Event()
         
@@ -53,11 +58,11 @@ class EcosystemManager:
             # Create data directories
             self._create_directories()
             
+            # Initialize shared services
+            await self._initialize_services()
+
             # Create initial agents
             await self._create_initial_agents()
-            
-            # Initialize shared services (placeholder for now)
-            await self._initialize_services()
             
             self.logger.info(f"Ecosystem initialized with {len(self.agents)} agents")
             
@@ -154,17 +159,28 @@ class EcosystemManager:
                 generation=0
             )
             
-            # Create agent core
-            agent = AgentCore(identity, self.config)
+            # Create agent core, now passing shared world modules
+            agent = AgentCore(
+                identity=identity,
+                config=self.config,
+                virtual_world=self.virtual_world,
+                construction_manager=self.construction_manager
+            )
             self.agents.append(agent)
             
             self.logger.info(f"Created agent: {identity.name} ({identity.agent_id})")
     
     async def _initialize_services(self) -> None:
-        """Initialize shared services."""
-        # Placeholder for shared services initialization
-        # This will be implemented in later tasks
-        self.logger.debug("Shared services initialization (placeholder)")
+        """Initialize shared services like the Virtual World."""
+        self.logger.info("Initializing shared ecosystem services...")
+        self.virtual_world = VirtualWorld("ecosystem_world")
+        await self.virtual_world.initialize()
+
+        # The ConstructionManager depends on the VirtualWorld
+        self.construction_manager = ConstructionManager("ecosystem_construction", self.virtual_world)
+        await self.construction_manager.initialize()
+
+        self.logger.info("Shared services initialized.")
     
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown."""

@@ -4,8 +4,9 @@ Unit tests for core components of the autonomous AI ecosystem.
 
 import pytest
 import asyncio
-from datetime import datetime
-from unittest.mock import Mock, patch
+from datetime import datetime, timedelta
+from unittest.mock import Mock, patch, AsyncMock
+import json
 
 from autonomous_ai_ecosystem.core.interfaces import (
     AgentIdentity, AgentState, AgentMessage, AgentGender, 
@@ -520,6 +521,57 @@ class TestAgentCore:
             "proposal_123",
             accept=True
         )
+
+    @patch('autonomous_ai_ecosystem.world.virtual_world.VirtualWorld.initialize', new_callable=AsyncMock)
+    @patch('autonomous_ai_ecosystem.world.construction.CollaborativeConstruction.initialize', new_callable=AsyncMock)
+    @patch('autonomous_ai_ecosystem.world.virtual_world.VirtualWorld.move_agent', new_callable=AsyncMock)
+    async def test_agent_world_interaction_via_tool_router(self, mock_move_agent, mock_construction_init, mock_world_init):
+        """Test that agent can interact with the world via the tool router."""
+        from autonomous_ai_ecosystem.world.virtual_world import VirtualWorld
+        from autonomous_ai_ecosystem.world.construction import CollaborativeConstruction
+
+        # --- Arrange ---
+        identity = AgentIdentity(
+            agent_id="test_agent_world_user",
+            name="World User Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to explore the world",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize the agent, which will create the singleton instances
+        # and the tool router with the real world tools.
+        await agent.initialize()
+
+        # Mock the brain's response to select the 'move' tool
+        move_tool_response = {
+            "tool_name": "move_agent_in_world",
+            "arguments": {"direction": "north"}
+        }
+        # The tool router uses generate_text, so we mock that on the agent's brain
+        agent.ai_brain.generate_text = AsyncMock(return_value=json.dumps(move_tool_response))
+
+        # The tool's execute method will call the virtual_world's move_agent method.
+        # We mock the return value of the world's method.
+        mock_move_agent.return_value = {"success": True, "new_location": "loc_north"}
+
+        # --- Act ---
+        request = "Move one step to the north"
+        result = await agent.tool_router.route_request(request)
+
+        # --- Assert ---
+        # 1. The brain was called to make a decision
+        agent.ai_brain.generate_text.assert_awaited_once()
+
+        # 2. The virtual world's move_agent method was called with the correct parameters
+        mock_move_agent.assert_awaited_once_with(agent.identity.agent_id, "north")
+
+        # 3. The final result is passed back through the router
+        self.assertIn("success", result)
+        self.assertTrue(result["success"])
 
 
 if __name__ == "__main__":

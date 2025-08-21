@@ -250,6 +250,11 @@ class AgentState:
     energy_level: float = 1.0
     stress_level: float = 0.0
     last_state_update: datetime = field(default_factory=datetime.now)
+
+    # World position
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
     
     def __post_init__(self):
         """Validate state data after initialization."""

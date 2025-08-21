@@ -411,16 +411,33 @@ class AgentCore:
             from ..agents.reproduction_manager import ReproductionManager
             from ..agents.social_manager import SocialManager
             from ..agents.status_manager import StatusManager
+            from ..tools.world_tools import CheckSurroundingsTool, MoveTool, StartConstructionProjectTool
+            from ..world.virtual_world import VirtualWorld
+            from ..world.construction import CollaborativeConstruction
 
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
             emotion_engine = EmotionEngine(self.identity.agent_id, self.identity.personality_traits)
             ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits, memory_system)
-            
+
+            # Setup world and construction singletons
+            virtual_world = VirtualWorld(agent_id=self.identity.agent_id)
+            construction_manager = CollaborativeConstruction(agent_id=self.identity.agent_id, virtual_world=virtual_world)
+            self.virtual_world = virtual_world
+            self.construction_manager = construction_manager
+
             # Setup Tools and ToolRouter
             web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
             web_search_tool = WebSearchTool(web_browser)
-            tool_router = ToolRouter(tools=[web_search_tool], brain=ai_brain, agent_id=self.identity.agent_id)
+
+            # Add world tools
+            world_tools = [
+                CheckSurroundingsTool(self.virtual_world),
+                MoveTool(self.virtual_world),
+                StartConstructionProjectTool(self.construction_manager)
+            ]
+            all_tools = [web_search_tool] + world_tools
+            tool_router = ToolRouter(tools=all_tools, brain=ai_brain, agent_id=self.identity.agent_id)
 
             # Setup self-modification modules
             code_analyzer = CodeAnalyzer(self.identity.agent_id)
@@ -476,6 +493,8 @@ class AgentCore:
                                      ["ai_brain", "reasoning_engine", "planning_engine",
                                       "daily_planner", "emotion_engine", "memory_system"])
             await self.register_module("reflection_engine", reflection_engine, ["ai_brain", "memory_system"])
+            await self.register_module("virtual_world", virtual_world)
+            await self.register_module("construction_manager", construction_manager, ["virtual_world"])
 
             # Store references for easy access
             self.memory_system = memory_system

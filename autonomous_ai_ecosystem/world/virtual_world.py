@@ -18,6 +18,17 @@ from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 
 
+# Singleton Metaclass
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
 class LocationType(Enum):
     """Types of virtual locations."""
     SETTLEMENT = "settlement"
@@ -141,7 +152,7 @@ class WorldEvent:
     effects: Dict[str, Any] = field(default_factory=dict)
 
 
-class VirtualWorld(AgentModule):
+class VirtualWorld(AgentModule, metaclass=SingletonMeta):
     """
     Virtual world management system that handles locations, resources,
     and world-building mechanics for the agent ecosystem.
@@ -156,6 +167,7 @@ class VirtualWorld(AgentModule):
         self.construction_projects: Dict[str, ConstructionProject] = {}
         self.world_events: List[WorldEvent] = []
         self.global_resources: Dict[ResourceType, Resource] = {}
+        self.agent_positions: Dict[str, Coordinates] = {} # agent_id -> Coordinates
         
         # World parameters
         self.world_config = {
@@ -729,7 +741,21 @@ class VirtualWorld(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to get world statistics: {e}")
-            return {"error": str(e)}    
+            return {"error": str(e)}
+
+    def get_agent_position(self, agent_id: str) -> Optional[Coordinates]:
+        """Gets the current position of an agent."""
+        return self.agent_positions.get(agent_id)
+
+    def update_agent_position(self, agent_id: str, new_position: Coordinates) -> bool:
+        """Updates the position of an agent in the world."""
+        if not self._is_valid_coordinate(new_position):
+            self.logger.warning(f"Agent {agent_id} attempted to move to invalid coordinates: {new_position}")
+            return False
+
+        self.agent_positions[agent_id] = new_position
+        self.logger.debug(f"Updated position for agent {agent_id} to {new_position}")
+        return True
   
   # Private helper methods
     

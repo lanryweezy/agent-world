@@ -20,6 +20,17 @@ from ..core.logger import get_agent_logger, log_agent_event
 from .virtual_world import VirtualWorld, Location, LocationType, Resource, ResourceType, Coordinates
 
 
+# Singleton Metaclass
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            instance = super().__call__(*args, **kwargs)
+            cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
 class ProjectType(Enum):
     """Types of construction projects."""
     NEW_LOCATION = "new_location"
@@ -187,7 +198,7 @@ class ConstructionConflict:
     arguments: Dict[str, str] = field(default_factory=dict)  # agent_id -> argument
 
 
-class CollaborativeConstruction(AgentModule):
+class CollaborativeConstruction(AgentModule, metaclass=SingletonMeta):
     """
     System for managing collaborative construction projects in the virtual world.
     
