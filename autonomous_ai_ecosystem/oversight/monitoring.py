@@ -668,4 +668,4 @@ class OversightMonitor(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to get active alerts: {e}")
-            return []"
+            return []

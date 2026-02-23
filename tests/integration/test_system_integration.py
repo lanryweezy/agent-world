@@ -13,9 +13,8 @@ import tempfile
 import shutil
 import time
 import psutil
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from unittest.mock import Mock, patch
+from datetime import datetime
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
     EcosystemOrchestrator,
@@ -311,7 +310,7 @@ async def test_resource_management(integration_orchestrator):
     # Monitor resource usage
     initial_process = psutil.Process()
     initial_memory = initial_process.memory_info().rss
-    initial_cpu_percent = initial_process.cpu_percent()
+    initial_process.cpu_percent()
     
     # Perform resource-intensive operations
     tasks = []

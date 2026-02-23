@@ -7,9 +7,7 @@ import tempfile
 import shutil
 from datetime import datetime, timedelta
 
-from autonomous_ai_ecosystem.agents.memory import MemorySystem, MemoryType, MemoryImportance
-from autonomous_ai_ecosystem.core.interfaces import Memory
-from autonomous_ai_ecosystem.utils.generators import generate_knowledge_id
+from autonomous_ai_ecosystem.agents.memory import MemorySystem, MemoryType
 
 
 class TestMemorySystem:
@@ -361,7 +359,7 @@ class TestMemoryConsolidation:
     
     def setup_method(self):
         """Set up test environment."""
-        from autonomous_ai_ecosystem.agents.memory_consolidation import MemoryConsolidator, ConsolidationStrategy
+        from autonomous_ai_ecosystem.agents.memory_consolidation import MemoryConsolidator
         
         self.agent_id = "test_agent_consolidation"
         self.consolidator = MemoryConsolidator(self.agent_id)
@@ -384,7 +382,6 @@ class TestMemoryConsolidation:
     @pytest.mark.asyncio
     async def test_memory_association_creation(self):
         """Test creating associations between memories."""
-        from autonomous_ai_ecosystem.agents.memory_consolidation import ConsolidationStrategy
         
         # Create related memories
         memory1 = self.memory_system.create_memory(

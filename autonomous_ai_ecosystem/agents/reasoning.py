@@ -5,12 +5,10 @@ This module implements sophisticated reasoning algorithms, planning strategies,
 and goal-oriented behavior for intelligent agent decision-making.
 """
 
-import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -653,7 +651,7 @@ class PlanningEngine(AgentModule):
             plan_id = f"plan_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{goal_id}"
             
             # Use AI brain to create the plan
-            input_data = {
+            {
                 "goal": goal.description,
                 "success_criteria": goal.success_criteria,
                 "required_resources": goal.required_resources,
@@ -812,7 +810,18 @@ class PlanningEngine(AgentModule):
     def get_active_plans(self) -> List[Plan]:
         """Get currently active plans."""
         return [self.plans[plan_id] for plan_id in self.active_plans if plan_id in self.plans]
-    
+
+    def get_all_goals(self) -> List[Goal]:
+        """Get all goals, regardless of status."""
+        return list(self.goals.values())
+
+    async def update_goal(self, goal: Goal) -> None:
+        """Update an existing goal."""
+        if goal.goal_id not in self.goals:
+            raise ValueError(f"Goal {goal.goal_id} not found")
+        self.goals[goal.goal_id] = goal
+        self.logger.debug(f"Updated goal: {goal.goal_id}")
+
     def get_planning_statistics(self) -> Dict[str, Any]:
         """Get planning engine statistics."""
         return {

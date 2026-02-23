@@ -62,8 +62,9 @@ class WebPage:
     load_time: float
     word_count: int
     language: Optional[str] = None
-    credibility_score: float = 0.5@da
-taclass
+    credibility_score: float = 0.5
+
+@dataclass
 class BrowsingSession:
     """Represents a web browsing session."""
     session_id: str
@@ -166,8 +167,9 @@ class ContentFilter:
             return min(1.0, max(0.0, score))
             
         except Exception:
-            return 0.5class We
-bBrowser(AgentModule):
+            return 0.5
+
+class WebBrowser(AgentModule):
     """
     Intelligent web browser for autonomous agents with safety features,
     content extraction, and adaptive browsing strategies.
@@ -278,7 +280,7 @@ bBrowser(AgentModule):
         except Exception as e:
             self.logger.error(f"Failed to start browsing session: {e}")
             raise  
-  async def browse_topic(
+    async def browse_topic(
         self,
         topic: str,
         max_pages: int = 10,
@@ -417,8 +419,9 @@ bBrowser(AgentModule):
             return None
         except Exception as e:
             self.logger.error(f"Failed to visit page {url}: {e}")
-            return None    asyn
-c def end_browsing_session(self) -> Optional[BrowsingSession]:
+            return None
+
+    async def end_browsing_session(self) -> Optional[BrowsingSession]:
         """
         End the current browsing session.
         
@@ -655,7 +658,7 @@ c def end_browsing_session(self) -> Optional[BrowsingSession]:
         except Exception as e:
             self.logger.error(f"Failed to extract content from {url}: {e}")
             return None 
-   def _extract_main_content(self, soup: BeautifulSoup) -> str:
+    def _extract_main_content(self, soup: BeautifulSoup) -> str:
         """Extract main content from page, filtering out navigation and ads."""
         try:
             # Remove unwanted elements

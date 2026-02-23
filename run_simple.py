@@ -5,7 +5,6 @@ This version bypasses complex modules to get the basic system running.
 """
 
 import asyncio
-import sys
 from datetime import datetime
 from pathlib import Path
 

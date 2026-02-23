@@ -7,12 +7,12 @@ and episodic memory storage, retrieval, and consolidation mechanisms.
 
 import sqlite3
 import json
-import math
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import asdict
+from typing import Dict, List, Optional, Any
 from enum import Enum
+
+from .vector_memory import VectorMemory
 
 from ..core.interfaces import Memory, MemoryInterface, AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -72,6 +72,7 @@ class MemorySystem(AgentModule, MemoryInterface):
         
         # Ensure directories exist
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self.vector_memory = VectorMemory()
         
         self.logger.info(f"Memory system initialized for {agent_id}")
     
@@ -130,6 +131,9 @@ class MemorySystem(AgentModule, MemoryInterface):
             # Store in database
             await self._store_memory_in_db(memory)
             
+            # Add to vector memory for semantic search
+            self.vector_memory.add_document(memory.content)
+            
             # Update statistics
             self.memory_stats["total_memories"] += 1
             self.memory_stats[f"{memory.memory_type}_memories"] += 1
@@ -169,14 +173,42 @@ class MemorySystem(AgentModule, MemoryInterface):
                 self.memory_stats["retrievals_performed"] += 1
                 return self.retrieval_cache[cache_key]
             
-            # Search working memory first (most recent)
-            working_results = self._search_working_memory(query, limit)
+            # Perform semantic search using VectorMemory
+            semantic_results_content = self.vector_memory.search(query, limit)
+            semantic_results_ids = []
             
-            # Search database for additional results
-            db_results = await self._search_database_memories(query, limit - len(working_results))
+            # Retrieve full Memory objects for semantic results from database
+            semantic_memories = []
+            if semantic_results_content:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    for content in semantic_results_content:
+                        cursor = conn.execute("SELECT * FROM memories WHERE content = ?", (content,))
+                        row = cursor.fetchone()
+                        if row:
+                            memory = self._row_to_memory(row)
+                            semantic_memories.append(memory)
+                            semantic_results_ids.append(memory.memory_id)
             
-            # Combine and rank results
-            all_results = working_results + db_results
+            # Search working memory (excluding those already found semantically)
+            working_results = [
+                m for m in self._search_working_memory(query, limit)
+                if m.memory_id not in semantic_results_ids
+            ]
+            
+            # Search database for additional results (excluding those already found)
+            db_results = await self._search_database_memories(
+                query, limit - len(semantic_memories) - len(working_results)
+            )
+            db_results = [
+                m for m in db_results
+                if m.memory_id not in semantic_results_ids and m.memory_id not in [wr.memory_id for wr in working_results]
+            ]
+            
+            # Combine all results
+            all_results = semantic_memories + working_results + db_results
+            
+            # Rank results (semantic matches should naturally rank higher due to direct relevance)
             ranked_results = self._rank_memories_by_relevance(all_results, query)
             
             # Limit results
@@ -194,6 +226,7 @@ class MemorySystem(AgentModule, MemoryInterface):
                 {
                     "query": query,
                     "results_count": len(final_results),
+                    "from_semantic_memory": len(semantic_memories),
                     "from_working_memory": len(working_results),
                     "from_database": len(db_results)
                 }

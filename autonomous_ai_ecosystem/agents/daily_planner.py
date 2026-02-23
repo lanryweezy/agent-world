@@ -5,17 +5,16 @@ This module implements daily planning algorithms, activity scheduling,
 and goal-oriented behavior management for intelligent agents.
 """
 
-import asyncio
 from datetime import datetime, timedelta, time
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .brain import AIBrain, ThoughtType
-from .reasoning import ReasoningEngine, PlanningEngine, Goal, GoalStatus
+from .brain import AIBrain
+from .emotions import EmotionEngine
+from .thought_processor import ThoughtRequest, ThoughtTrigger, ThoughtPriority
 
 
 class ActivityType(Enum):
@@ -89,12 +88,14 @@ class DailyPlanner(AgentModule):
         ai_brain: AIBrain, 
         reasoning_engine: ReasoningEngine,
         planning_engine: PlanningEngine,
+        thought_processor: Any, # Use Any to avoid circular import for now
         personality_traits: Dict[str, float]
     ):
         super().__init__(agent_id)
         self.ai_brain = ai_brain
         self.reasoning_engine = reasoning_engine
         self.planning_engine = planning_engine
+        self.thought_processor = thought_processor
         self.personality_traits = personality_traits
         self.logger = get_agent_logger(agent_id, "daily_planner")
         
@@ -102,6 +103,7 @@ class DailyPlanner(AgentModule):
         self.current_plan: Optional[DailyPlan] = None
         self.plan_history: List[DailyPlan] = []
         self.max_plan_history = 30  # Keep 30 days of history
+        self.long_term_goals: Dict[str, Goal] = {}
         
         # Agent preferences and constraints
         self.working_hours = {
@@ -131,6 +133,7 @@ class DailyPlanner(AgentModule):
         try:
             # Load any existing planning preferences
             await self._load_planning_preferences()
+            await self._load_long_term_goals()
             
             self.logger.info("Daily planner initialized successfully")
         except Exception as e:
@@ -142,6 +145,7 @@ class DailyPlanner(AgentModule):
         try:
             # Save planning state and preferences
             await self._save_planning_state()
+            await self._save_long_term_goals()
             
             self.logger.info("Daily planner shutdown completed")
         except Exception as e:
@@ -871,3 +875,77 @@ class DailyPlanner(AgentModule):
         """Save current planning state."""
         # Placeholder for saving state
         pass
+
+    async def _load_long_term_goals(self) -> None:
+        """Load long-term goals from the planning engine."""
+        try:
+            all_goals = await self.planning_engine.get_all_goals()
+            self.long_term_goals = {goal.goal_id: goal for goal in all_goals}
+            self.logger.debug(f"Loaded {len(self.long_term_goals)} long-term goals.")
+        except Exception as e:
+            self.logger.error(f"Failed to load long-term goals: {e}")
+
+    async def _save_planning_state(self) -> None:
+        """Save current planning state."""
+        # Placeholder for saving state
+        pass
+
+    async def _load_long_term_goals(self) -> None:
+        """Load long-term goals from the planning engine."""
+        try:
+            all_goals = await self.planning_engine.get_all_goals()
+            self.long_term_goals = {goal.goal_id: goal for goal in all_goals}
+            self.logger.debug(f"Loaded {len(self.long_term_goals)} long-term goals.")
+        except Exception as e:
+            self.logger.error(f"Failed to load long-term goals: {e}")
+
+    async def _save_long_term_goals(self) -> None:
+        """Save long-term goals to the planning engine."""
+        try:
+            for goal in self.long_term_goals.values():
+                await self.planning_engine.update_goal(goal)
+            self.logger.debug(f"Saved {len(self.long_term_goals)} long-term goals.")
+        except Exception as e:
+            self.logger.error(f"Failed to save long-term goals: {e}")
+
+    async def _review_long_term_goals(self) -> None:
+        """Periodically review long-term goals and trigger proactive thoughts if needed."""
+        self.logger.info("Reviewing long-term goals...")
+        for goal_id, goal in self.long_term_goals.items():
+            if goal.status == GoalStatus.ACTIVE and goal.progress < 1.0:
+                # Check for stalled goals (e.g., no progress in a while)
+                # This is a simplified check; a more robust solution would track last_updated on Goal
+                if (datetime.now() - goal.created_at).days > 7 and goal.progress < 0.1: # Example: stalled if no progress in 7 days
+                    self.logger.warning(f"Goal '{goal.description}' (ID: {goal_id}) appears stalled. Triggering proactive thought.")
+                    
+                    # Submit a thought request to the ThoughtProcessor
+                    request = ThoughtRequest(
+                        request_id=f"proactive_goal_review_{goal_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        trigger=ThoughtTrigger.PROACTIVE,
+                        priority=ThoughtPriority.HIGH,
+                        context={
+                            "goal_id": goal_id,
+                            "goal_description": goal.description,
+                            "current_progress": goal.progress,
+                            "reason_for_thought": "Stalled long-term goal review"
+                        },
+                        required_capabilities=["analysis", "planning", "problem_solving"],
+                        related_goals=[goal_id]
+                    )
+                    await self.thought_processor.submit_thought_request(request)
+                elif goal.deadline and datetime.now() > goal.deadline and goal.progress < 1.0:
+                    self.logger.warning(f"Goal '{goal.description}' (ID: {goal_id}) is past its deadline. Triggering proactive thought.")
+                    request = ThoughtRequest(
+                        request_id=f"proactive_goal_deadline_{goal_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                        trigger=ThoughtTrigger.PROACTIVE,
+                        priority=ThoughtPriority.CRITICAL,
+                        context={
+                            "goal_id": goal_id,
+                            "goal_description": goal.description,
+                            "current_progress": goal.progress,
+                            "reason_for_thought": "Goal past deadline review"
+                        },
+                        required_capabilities=["analysis", "planning", "problem_solving"],
+                        related_goals=[goal_id]
+                    )
+                    await self.thought_processor.submit_thought_request(request)

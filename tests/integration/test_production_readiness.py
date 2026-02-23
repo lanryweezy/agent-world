@@ -14,9 +14,8 @@ import shutil
 import time
 import psutil
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
-from unittest.mock import Mock, patch
+from datetime import datetime
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
     EcosystemOrchestrator,
@@ -276,7 +275,7 @@ async def test_production_graceful_shutdown(production_orchestrator):
     
     # Record initial state
     initial_status = await production_orchestrator.get_system_status()
-    initial_uptime = initial_status["uptime_seconds"]
+    initial_status["uptime_seconds"]
     
     # Verify system is fully operational
     assert initial_status["is_running"]

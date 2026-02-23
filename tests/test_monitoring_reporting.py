@@ -4,8 +4,8 @@ Unit tests for the monitoring and reporting system.
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import datetime
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.oversight.monitoring_reporting import (
     MonitoringReportingSystem,
@@ -561,7 +561,7 @@ class TestMonitoringReportingSystem:
     async def test_helper_methods(self, monitoring_system):
         """Test helper methods for alert rule conditions."""
         # Add some test events
-        now = datetime.now()
+        datetime.now()
         
         # Add error events
         for i in range(3):

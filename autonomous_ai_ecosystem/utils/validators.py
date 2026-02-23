@@ -3,7 +3,7 @@ Validation utilities for the autonomous AI ecosystem.
 """
 
 import re
-from typing import List, Dict, Any
+from typing import List, Dict
 from datetime import datetime
 
 from ..core.interfaces import AgentIdentity, AgentMessage, AgentGender, MessageType

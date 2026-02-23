@@ -5,9 +5,8 @@ Tests monitoring capabilities, alerting, and system health checks.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import datetime
+from unittest.mock import Mock, patch
 
 from autonomous_ai_ecosystem.services.monitoring_service import (
     ContinuousMonitoringService,

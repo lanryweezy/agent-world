@@ -10,6 +10,39 @@ from typing import Optional
 import json
 
 
+class Logger:
+    """A simple logger class for system components."""
+
+    def __init__(self, name: str, log_level: str = "INFO"):
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(getattr(logging, log_level.upper()))
+        # Prevent duplicate handlers if logger is already configured
+        if not self.logger.handlers:
+            # Get the root logger's handlers if they exist
+            root_handlers = logging.getLogger("autonomous_ai_ecosystem").handlers
+            if root_handlers:
+                for handler in root_handlers:
+                    self.logger.addHandler(handler)
+            else: # Basic configuration if no handlers are set up
+                handler = logging.StreamHandler(sys.stdout)
+                formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                handler.setFormatter(formatter)
+                self.logger.addHandler(handler)
+
+    def info(self, message: str):
+        self.logger.info(message)
+
+    def warning(self, message: str):
+        self.logger.warning(message)
+
+    def error(self, message: str):
+        self.logger.error(message, exc_info=True)
+
+    def debug(self, message: str):
+        self.logger.debug(message)
+
+
+
 class EcosystemFormatter(logging.Formatter):
     """Custom formatter for ecosystem logs."""
     

@@ -4,14 +4,10 @@ Unit tests for AI brain and reasoning systems.
 
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.agents.brain import (
-    AIBrain, ThoughtProcess, ThoughtType, LLMProvider
-)
-from autonomous_ai_ecosystem.agents.reasoning import (
-    ReasoningEngine, PlanningEngine, Goal, Plan, ReasoningType, 
-    PlanningStrategy, GoalStatus
+    AIBrain, ThoughtProcess, ThoughtType
 )
 from autonomous_ai_ecosystem.core.config import LLMConfig
 from autonomous_ai_ecosystem.utils.generators import generate_personality_traits

@@ -6,18 +6,17 @@ for correct functionality and safety measures.
 """
 
 import pytest
-import asyncio
 import tempfile
 import os
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 
 from autonomous_ai_ecosystem.agents.code_analyzer import (
-    CodeAnalyzer, CodeElement, CodeAnalysisResult, ModificationProposal,
+    CodeAnalyzer, CodeAnalysisResult, ModificationProposal,
     CodeRiskLevel, CodeCapability
 )
 from autonomous_ai_ecosystem.agents.code_modifier import (
-    CodeModifier, ModificationType, ModificationStatus, ModificationRecord
+    CodeModifier, ModificationType, ModificationStatus
 )
 from autonomous_ai_ecosystem.utils.security import (
     sanitize_code, validate_code_safety, detect_vulnerabilities,
@@ -167,7 +166,7 @@ def new_function(x):
         
         assessment = await code_analyzer.assess_modification_risk(safe_proposal)
         
-        assert assessment["should_allow"] == True
+        assert assessment["should_allow"]
         assert assessment["risk_level"] == "safe"
         assert len(assessment["security_issues"]) == 0
         
@@ -190,7 +189,7 @@ def dangerous_function(code):
         
         assessment = await code_analyzer.assess_modification_risk(dangerous_proposal)
         
-        assert assessment["should_allow"] == False
+        assert not assessment["should_allow"]
         assert assessment["risk_level"] in ["high_risk", "dangerous"]
         assert len(assessment["security_issues"]) > 0
     
@@ -370,7 +369,7 @@ class TestCodeModifier:
         # Approve it
         success = await code_modifier.approve_modification(modification_id)
         
-        assert success == True
+        assert success
         assert modification_id not in code_modifier.pending_modifications
         
         # Find the record and check status
@@ -401,7 +400,7 @@ class TestCodeModifier:
         # Reject it
         success = await code_modifier.reject_modification(modification_id, "Too dangerous")
         
-        assert success == True
+        assert success
         assert modification_id not in code_modifier.pending_modifications
         
         # Find the record and check status
@@ -561,44 +560,44 @@ def execute_code(code):
     def test_safe_identifier_validation(self):
         """Test safe identifier validation."""
         # Safe identifiers
-        assert is_safe_identifier("my_function") == True
-        assert is_safe_identifier("calculate_result") == True
-        assert is_safe_identifier("user_data") == True
+        assert is_safe_identifier("my_function")
+        assert is_safe_identifier("calculate_result")
+        assert is_safe_identifier("user_data")
         
         # Unsafe identifiers
-        assert is_safe_identifier("eval") == False
-        assert is_safe_identifier("exec") == False
-        assert is_safe_identifier("__import__") == False
-        assert is_safe_identifier("123invalid") == False
-        assert is_safe_identifier("class") == False  # Python keyword
-        assert is_safe_identifier("") == False
+        assert not is_safe_identifier("eval")
+        assert not is_safe_identifier("exec")
+        assert not is_safe_identifier("__import__")
+        assert not is_safe_identifier("123invalid")
+        assert not is_safe_identifier("class")  # Python keyword
+        assert not is_safe_identifier("")
     
     def test_import_safety_validation(self):
         """Test import safety validation."""
         # Safe imports
         is_safe, reason = validate_import_safety("math")
-        assert is_safe == True
+        assert is_safe
         
         is_safe, reason = validate_import_safety("json")
-        assert is_safe == True
+        assert is_safe
         
         is_safe, reason = validate_import_safety("datetime")
-        assert is_safe == True
+        assert is_safe
         
         # Unsafe imports
         is_safe, reason = validate_import_safety("os")
-        assert is_safe == False
+        assert not is_safe
         assert "dangerous" in reason.lower()
         
         is_safe, reason = validate_import_safety("subprocess")
-        assert is_safe == False
+        assert not is_safe
         
         is_safe, reason = validate_import_safety("sys")
-        assert is_safe == False
+        assert not is_safe
         
         # Unknown imports
         is_safe, reason = validate_import_safety("unknown_module")
-        assert is_safe == False
+        assert not is_safe
         assert "unknown" in reason.lower()
     
     def test_code_hash_calculation(self):

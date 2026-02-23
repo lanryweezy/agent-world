@@ -8,12 +8,10 @@ data quality assessment, and collective knowledge building.
 import asyncio
 import hashlib
 import json
-import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 import sqlite3
 import os
 
@@ -506,7 +504,7 @@ class DatasetManager(AgentModule):
             entry.add_validation(validator_id, score, feedback)
             
             # Create contribution record
-            contribution = await self._create_contribution_record(
+            await self._create_contribution_record(
                 validator_id, entry_id, "validate", f"Validation score: {score}"
             )
             
@@ -702,7 +700,7 @@ class DatasetManager(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to get knowledge entry: {e}")
-            return {"error": str(e)}" 
+            return {"error": str(e)} 
    
     def get_dataset_info(self, dataset_id: str) -> Dict[str, Any]:
         """Get information about a dataset."""
@@ -1021,7 +1019,7 @@ class DatasetManager(AgentModule):
             if not self.db_connection:
                 return
             
-            cursor = self.db_connection.cursor()
+            self.db_connection.cursor()
             
             # Save datasets
             for dataset in self.datasets.values():

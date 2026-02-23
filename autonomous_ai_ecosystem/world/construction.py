@@ -403,23 +403,23 @@ class CollaborativeConstruction(AgentModule):
         description: str,
         resource_type: Optional[ResourceType] = None
     ) -> Dict[str, Any]:
-        \"\"\"Make a contribution to a construction project.\"\"\"
+        """Make a contribution to a construction project."""
         try:
             if project_id not in self.projects:
-                return {\"success\": False, \"error\": \"Project not found\"}
+                return {"success": False, "error": "Project not found"}
             
             project = self.projects[project_id]
             
             # Check if project accepts contributions
             if project.status not in [ProjectStatus.PLANNING, ProjectStatus.APPROVED, ProjectStatus.IN_PROGRESS]:
-                return {\"success\": False, \"error\": f\"Project not accepting contributions (status: {project.status.value})\"}
+                return {"success": False, "error": f"Project not accepting contributions (status: {project.status.value})"}
             
             # Validate contribution
             if not await self._validate_contribution(agent_id, project, contribution_type, value, resource_type):
-                return {\"success\": False, \"error\": \"Invalid contribution\"}
+                return {"success": False, "error": "Invalid contribution"}
             
             # Create contribution record
-            contribution_id = f\"contrib_{len(project.contributions)}_{datetime.now().timestamp()}\"
+            contribution_id = f"contrib_{len(project.contributions)}_{datetime.now().timestamp()}"
             contribution = ProjectContribution(
                 contribution_id=contribution_id,
                 agent_id=agent_id,
@@ -441,50 +441,50 @@ class CollaborativeConstruction(AgentModule):
             await self._update_project_progress(project)
             
             # Update statistics
-            self.stats[\"total_contributions\"] += 1
+            self.stats["total_contributions"] += 1
             
             log_agent_event(
                 self.agent_id,
-                \"project_contribution\",
+                "project_contribution",
                 {
-                    \"project_id\": project_id,
-                    \"contributor\": agent_id,
-                    \"contribution_type\": contribution_type.value,
-                    \"value\": value
+                    "project_id": project_id,
+                    "contributor": agent_id,
+                    "contribution_type": contribution_type.value,
+                    "value": value
                 }
             )
             
             result = {
-                \"success\": True,
-                \"contribution_id\": contribution_id,
-                \"project_progress\": project.progress_percentage,
-                \"resource_progress\": project.get_total_resource_progress()
+                "success": True,
+                "contribution_id": contribution_id,
+                "project_progress": project.progress_percentage,
+                "resource_progress": project.get_total_resource_progress()
             }
             
-            self.logger.info(f\"Contribution made to project {project_id}: {contribution_type.value} by {agent_id}\")
+            self.logger.info(f"Contribution made to project {project_id}: {contribution_type.value} by {agent_id}")
             
             return result
             
         except Exception as e:
-            self.logger.error(f\"Failed to process contribution: {e}\")
-            return {\"success\": False, \"error\": str(e)}
+            self.logger.error(f"Failed to process contribution: {e}")
+            return {"success": False, "error": str(e)}
     
     async def start_project(self, project_id: str, manager_id: Optional[str] = None) -> Dict[str, Any]:
-        \"\"\"Start a construction project.\"\"\"
+        """Start a construction project."""
         try:
             if project_id not in self.projects:
-                return {\"success\": False, \"error\": \"Project not found\"}
+                return {"success": False, "error": "Project not found"}
             
             project = self.projects[project_id]
             
             # Check if project can be started
             if project.status != ProjectStatus.APPROVED:
-                return {\"success\": False, \"error\": f\"Project not ready to start (status: {project.status.value})\"}
+                return {"success": False, "error": f"Project not ready to start (status: {project.status.value})"}
             
             # Check resource requirements
             resource_progress = project.get_total_resource_progress()
             if resource_progress < 80.0:  # Need at least 80% of resources
-                return {\"success\": False, \"error\": f\"Insufficient resources ({resource_progress:.1f}% collected)\"}
+                return {"success": False, "error": f"Insufficient resources ({resource_progress:.1f}% collected)"}
             
             # Set project manager if not already set
             if manager_id and manager_id in project.participants:
@@ -501,32 +501,32 @@ class CollaborativeConstruction(AgentModule):
             
             log_agent_event(
                 self.agent_id,
-                \"project_started\",
+                "project_started",
                 {
-                    \"project_id\": project_id,
-                    \"project_manager\": project.project_manager,
-                    \"participants\": list(project.participants),
-                    \"deadline\": project.deadline.isoformat() if project.deadline else None
+                    "project_id": project_id,
+                    "project_manager": project.project_manager,
+                    "participants": list(project.participants),
+                    "deadline": project.deadline.isoformat() if project.deadline else None
                 }
             )
             
             result = {
-                \"success\": True,
-                \"status\": project.status.value,
-                \"project_manager\": project.project_manager,
-                \"deadline\": project.deadline.isoformat() if project.deadline else None,
-                \"participants\": list(project.participants)
+                "success": True,
+                "status": project.status.value,
+                "project_manager": project.project_manager,
+                "deadline": project.deadline.isoformat() if project.deadline else None,
+                "participants": list(project.participants)
             }
             
-            self.logger.info(f\"Project started: {project_id} managed by {project.project_manager}\")
+            self.logger.info(f"Project started: {project_id} managed by {project.project_manager}")
             
             return result
             
         except Exception as e:
-            self.logger.error(f\"Failed to start project: {e}\")
-            return {\"success\": False, \"error\": str(e)}"    
+            self.logger.error(f"Failed to start project: {e}")
+            return {"success": False, "error": str(e)}    
     
-async def complete_project(self, project_id: str) -> Dict[str, Any]:
+    async def complete_project(self, project_id: str) -> Dict[str, Any]:
         """Complete a construction project and apply its effects."""
         try:
             if project_id not in self.projects:

@@ -7,12 +7,10 @@ and economic interactions between agents.
 
 import asyncio
 import hashlib
-import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 import uuid
 
 from ..core.interfaces import AgentModule
@@ -553,7 +551,7 @@ class VirtualCurrency(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to exchange currency: {e}")
-            return {"success": False, "error": str(e)}"    
+            return {"success": False, "error": str(e)}    
 
     def get_wallet_info(self, agent_id: str) -> Dict[str, Any]:
         """Get detailed wallet information for an agent."""

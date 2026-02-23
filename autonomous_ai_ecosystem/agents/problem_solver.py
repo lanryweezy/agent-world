@@ -5,18 +5,14 @@ This module implements problem difficulty assessment, solution evaluation,
 and status point calculation based on problem complexity and solution quality.
 """
 
-import asyncio
-import json
-import math
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .brain import AIBrain, ThoughtType
+from .brain import AIBrain
 from .reasoning import ReasoningEngine
 
 
@@ -595,7 +591,7 @@ class ProblemSolver(AgentModule):
             )
             
             # Extract scores from AI evaluation
-            ai_insights = evaluation.get("insights", [])
+            evaluation.get("insights", [])
             ai_analysis = evaluation.get("analysis", "").lower()
             
             # Correctness score (0.0 to 1.0)

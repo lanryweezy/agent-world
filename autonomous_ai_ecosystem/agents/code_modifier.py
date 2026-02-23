@@ -8,12 +8,10 @@ allowing agents to modify their own code while maintaining safety and security.
 import ast
 import os
 import shutil
-import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass
 from enum import Enum
-import json
 from datetime import datetime
 
 from ..core.interfaces import AgentModule
@@ -633,7 +631,7 @@ class CodeModifier(AgentModule):
         import inspect
         try:
             return inspect.getsource(ast_tree)
-        except:
+        except Exception:
             return "# Failed to convert AST to code"
     
     async def _create_backup(self, file_path: str) -> str:

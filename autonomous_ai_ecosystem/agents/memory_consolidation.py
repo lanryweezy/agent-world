@@ -6,9 +6,8 @@ importance decay, associative memory formation, and intelligent forgetting.
 """
 
 import math
-import random
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Set
+from datetime import datetime
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 from enum import Enum
 

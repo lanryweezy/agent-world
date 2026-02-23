@@ -6,12 +6,9 @@ and validation for inter-agent communication in the ecosystem.
 """
 
 import json
-import uuid
 import hashlib
-import time
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Union
-from dataclasses import asdict
+from typing import Dict, Any, Optional, List
 from enum import Enum
 
 from ..core.interfaces import AgentMessage, MessageType

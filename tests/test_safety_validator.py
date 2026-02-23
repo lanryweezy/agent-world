@@ -3,9 +3,8 @@ Unit tests for the comprehensive safety validator.
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.safety.safety_validator import (
     ComprehensiveSafetyValidator,
@@ -246,7 +245,7 @@ def broken_function(
         agent_id = "test_agent"
         
         # Create some test violations
-        violation1 = await safety_validator._create_violation(
+        await safety_validator._create_violation(
             agent_id=agent_id,
             violation_type=ViolationType.CODE_INJECTION,
             threat_level=ThreatLevel.HIGH,
@@ -256,7 +255,7 @@ def broken_function(
             detection_method="test"
         )
         
-        violation2 = await safety_validator._create_violation(
+        await safety_validator._create_violation(
             agent_id=agent_id,
             violation_type=ViolationType.RESOURCE_ABUSE,
             threat_level=ThreatLevel.MEDIUM,

@@ -4,20 +4,18 @@ Unit tests for agent process management and lifecycle orchestration.
 
 import pytest
 import pytest_asyncio
-import asyncio
 import os
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch
 
 from autonomous_ai_ecosystem.orchestration.agent_manager import (
     AgentManager,
     AgentProcess,
     AgentStatus,
     ProcessState,
-    LifecycleEvent,
-    LifecycleEventRecord
+    LifecycleEvent
 )
 
 

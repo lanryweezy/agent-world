@@ -5,17 +5,14 @@ This module implements status point tracking, hierarchy management,
 and social ranking systems based on problem-solving achievements.
 """
 
-import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import math
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .problem_solver import ProblemSolver, Solution, ProblemDifficulty, SolutionQuality
+from .problem_solver import Solution
 
 
 class StatusRank(Enum):
@@ -195,7 +192,6 @@ class StatusManager(AgentModule):
             status_record = self.agent_status[agent_id][category]
             
             # Award points
-            old_points = status_record.current_points
             old_rank = status_record.current_rank
             
             status_record.current_points += points

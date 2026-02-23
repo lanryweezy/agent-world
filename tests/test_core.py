@@ -3,12 +3,11 @@ Unit tests for core components of the autonomous AI ecosystem.
 """
 
 import pytest
-import asyncio
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.core.interfaces import (
-    AgentIdentity, AgentState, AgentMessage, AgentGender, 
+    AgentIdentity, AgentMessage, AgentGender, 
     MessageType, AgentStatus
 )
 from autonomous_ai_ecosystem.core.config import Config
@@ -105,7 +104,7 @@ class TestAgentMessage:
         assert message.recipient_id == "agent_002"
         assert message.message_type == MessageType.CHAT
         assert message.priority == 5  # default
-        assert message.requires_response == False  # default
+        assert not message.requires_response  # default
     
     def test_message_validation(self):
         """Test message validation."""
@@ -147,8 +146,8 @@ class TestConfig:
         assert config.ecosystem_name == "AutonomousAI"
         assert config.max_agents == 50
         assert config.initial_agent_count == 5
-        assert config.human_oversight_enabled == True
-        assert config.god_mode_enabled == True
+        assert config.human_oversight_enabled
+        assert config.god_mode_enabled
     
     def test_config_validation(self):
         """Test configuration validation."""
@@ -242,7 +241,7 @@ class TestAgentCore:
             await agent.initialize()
         
         assert agent.state.status == AgentStatus.ACTIVE
-        assert agent.is_running == True
+        assert agent.is_running
         assert agent.daily_cycle_start is not None
     
     async def test_message_processing(self):
@@ -284,7 +283,6 @@ class TestStateManager:
     def setup_method(self):
         """Set up test environment."""
         import tempfile
-        import shutil
         from autonomous_ai_ecosystem.core.state_manager import StateManager
         
         self.temp_dir = tempfile.mkdtemp()
@@ -360,7 +358,7 @@ class TestStateManager:
             "test_update"
         )
         
-        assert success == True
+        assert success
         
         # Retrieve updated state
         updated_state = self.state_manager.get_state("test_agent_004")
@@ -377,7 +375,7 @@ class TestStateManager:
             "agent_a", "agent_b", 0.3, "friend"
         )
         
-        assert success == True
+        assert success
         
         # Check relationships
         relationships = self.state_manager.get_relationships("agent_a")
@@ -397,7 +395,7 @@ class TestStateManager:
             priority=8
         )
         
-        assert success == True
+        assert success
         
         # Update goal progress
         success = self.state_manager.update_goal_progress(
@@ -406,7 +404,7 @@ class TestStateManager:
             0.5
         )
         
-        assert success == True
+        assert success
     
     def test_state_history_tracking(self):
         """Test state history tracking."""

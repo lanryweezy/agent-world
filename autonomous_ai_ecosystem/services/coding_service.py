@@ -7,16 +7,12 @@ code generation, debugging, optimization, and code analysis.
 
 import asyncio
 import ast
-import json
 import re
-import subprocess
 import tempfile
-import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -1171,7 +1167,7 @@ describe('{function_name}', () => {{
         """Generate module constants."""
         # Simple constant generation
         if request.language == CodeLanguage.PYTHON:
-            return f'"""Module constants."""\n\nMODULE_VERSION = "1.0.0"'
+            return '"""Module constants."""\n\nMODULE_VERSION = "1.0.0"'
         return ""
     
     async def _generate_module_functions(self, request: CodeRequest) -> str:
@@ -1255,7 +1251,7 @@ describe('{function_name}', () => {{
                 "# TODO: Add usage examples",
                 "```",
                 "",
-                f"## Quality Metrics",
+                "## Quality Metrics",
                 f"- Lines of Code: {solution.lines_of_code}",
                 f"- Complexity Score: {solution.complexity_score:.2f}",
                 f"- Maintainability Score: {solution.maintainability_score:.2f}"
@@ -1298,8 +1294,7 @@ describe('{function_name}', () => {{
         try:
             if language == CodeLanguage.PYTHON:
                 ast.parse(code)
-                return True
-        except:
+            except Exception:
             return False
         
         # For other languages, assume valid for now
@@ -1317,7 +1312,7 @@ describe('{function_name}', () => {{
                 complexity += len(re.findall(r'\bwhile\b', code))
                 complexity += len(re.findall(r'\bexcept\b', code))
                 return complexity
-        except:
+        except Exception:
             pass
         
         return 1
@@ -1339,11 +1334,9 @@ describe('{function_name}', () => {{
             if language == CodeLanguage.PYTHON:
                 comment_lines = [line for line in lines if line.strip().startswith('#')]
                 comment_ratio = len(comment_lines) / max(len(non_empty_lines), 1)
-                score += comment_ratio * 0.2
+                return max(0.0, min(1.0, score))
             
-            return max(0.0, min(1.0, score))
-            
-        except:
+        except Exception:
             return 0.5
     
     async def _estimate_performance(self, code: str, language: CodeLanguage) -> float:
@@ -1364,7 +1357,7 @@ describe('{function_name}', () => {{
             
             return max(0.0, min(1.0, score))
             
-        except:
+        except Exception:
             return 0.5
     
     async def _assess_security(self, code: str, language: CodeLanguage) -> float:
@@ -1381,7 +1374,7 @@ describe('{function_name}', () => {{
             
             return max(0.0, min(1.0, score))
             
-        except:
+        except Exception:
             return 0.5
     
     async def _run_linting(self, code: str, language: CodeLanguage) -> float:
@@ -1401,7 +1394,7 @@ describe('{function_name}', () => {{
                 
                 score = max(0.0, 1.0 - (violations / max(len(lines), 1)))
                 return score
-        except:
+        except Exception:
             pass
         
         return 0.8  # Default good score
@@ -1455,10 +1448,9 @@ describe('{function_name}', () => {{
                     max_indent = max(max_indent, indent)
             
             if max_indent > 16:  # More than 4 levels of nesting
-                opportunities.append("Reduce nesting levels for better readability")
-        
-        except:
-            pass
+                                opportunities.append("Reduce nesting levels for better readability")
+                        except Exception:
+                            pass
         
         return opportunities
     

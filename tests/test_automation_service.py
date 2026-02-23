@@ -6,8 +6,8 @@ Tests workflow creation, execution, and task management.
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import datetime
+from unittest.mock import Mock, patch
 
 from autonomous_ai_ecosystem.services.automation_service import (
     WorkflowAutomationService,
@@ -16,8 +16,7 @@ from autonomous_ai_ecosystem.services.automation_service import (
     TriggerType,
     AutomationTask,
     AutomationWorkflow,
-    WorkflowExecution,
-    WorkflowTrigger
+    WorkflowExecution
 )
 
 

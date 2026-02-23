@@ -82,8 +82,8 @@ class ServiceFeedback:
     # Metadata
     created_at: datetime = field(default_factory=datetime.now)
     processed_at: Optional[datetime] = None
-@
-dataclass
+
+@dataclass
 class QualityScore:
     """Represents a quality score for a service or agent."""
     score_id: str

@@ -13,8 +13,7 @@ import tempfile
 import shutil
 import time
 import random
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 from typing import List, Dict, Any
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
@@ -225,7 +224,7 @@ async def test_multi_agent_ecosystem_simulation(simulation_config):
                 # Simulate service execution with random outcome
                 rating = random.uniform(2.0, 5.0)
                 
-                feedback_id = await orchestrator.quality_feedback.submit_feedback(
+                await orchestrator.quality_feedback.submit_feedback(
                     service_id=f"sim_service_{_}",
                     agent_id=selected_agent["agent_id"],
                     rating=rating,
@@ -339,7 +338,7 @@ async def test_multi_agent_ecosystem_simulation(simulation_config):
         assert system_status["is_running"], "System should remain running during simulation"
         
         # Print simulation results
-        print(f"\nSimulation Results:")
+        print("\nSimulation Results:")
         print(f"  Duration: {summary['duration_seconds']:.1f}s")
         print(f"  Agents spawned: {summary['agent_spawns']}")
         print(f"  Service executions: {summary['service_executions']}")
@@ -410,7 +409,7 @@ async def test_emergent_behavior_simulation(simulation_config):
                 else:  # balanced
                     capabilities = ["general_tasks", "adaptation", "support"]
                 
-                capability_id = await orchestrator.capability_registry.register_capability(
+                await orchestrator.capability_registry.register_capability(
                     agent_id=agent_id,
                     service_type=agent_type,
                     capabilities=capabilities,
@@ -444,7 +443,7 @@ async def test_emergent_behavior_simulation(simulation_config):
             if matching_agents:
                 selected_agent = random.choice(matching_agents)
                 
-                feedback_id = await orchestrator.quality_feedback.submit_feedback(
+                await orchestrator.quality_feedback.submit_feedback(
                     service_id=f"emergent_service_{_}",
                     agent_id=selected_agent["agent_id"],
                     rating=random.uniform(3.0, 5.0),
@@ -495,7 +494,7 @@ async def test_emergent_behavior_simulation(simulation_config):
             # Simulate collaborative task execution
             if len(task_agents) >= 2:
                 for agent_id in task_agents:
-                    feedback_id = await orchestrator.quality_feedback.submit_feedback(
+                    await orchestrator.quality_feedback.submit_feedback(
                         service_id=f"collaborative_task_{_}",
                         agent_id=agent_id,
                         rating=random.uniform(3.5, 5.0),  # Collaborative tasks tend to be rated higher
@@ -517,7 +516,7 @@ async def test_emergent_behavior_simulation(simulation_config):
         preference_variance = max(service_preferences.values()) - min(service_preferences.values()) if service_preferences else 0
         assert preference_variance > 0.5, "Agents should develop different service preferences"
         
-        print(f"\nEmergent Behavior Analysis:")
+        print("\nEmergent Behavior Analysis:")
         print(f"  Unique interaction pairs: {len(interaction_patterns)}")
         print(f"  Explorer-involved interactions: {explorer_interactions}")
         print(f"  Social-involved interactions: {social_interactions}")
@@ -561,7 +560,7 @@ async def test_system_scalability_limits(simulation_config):
                     current_agents.append(spawned_agent_id)
                 
                 # Register capabilities
-                capability_id = await orchestrator.capability_registry.register_capability(
+                await orchestrator.capability_registry.register_capability(
                     agent_id=agent_id,
                     service_type="general",
                     capabilities=["basic_tasks"],
@@ -626,7 +625,7 @@ async def test_system_scalability_limits(simulation_config):
         assert performance_metrics[75]["max_response_time"] < 2.0, "Max response time should be < 2s"
         assert performance_metrics[75]["max_discovery_time"] < 5.0, "Max discovery time should be < 5s"
         
-        print(f"\nScalability Analysis:")
+        print("\nScalability Analysis:")
         print(f"  Response time growth (10→75 agents): {response_time_growth:.2f}x")
         print(f"  Discovery time growth (10→75 agents): {discovery_time_growth:.2f}x")
         

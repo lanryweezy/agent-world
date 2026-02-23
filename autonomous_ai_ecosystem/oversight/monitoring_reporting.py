@@ -6,13 +6,10 @@ and alert systems for human oversight and intervention.
 """
 
 import asyncio
-import json
-import smtplib
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Set, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 from email.mime.text import MimeText
 from email.mime.multipart import MimeMultipart
 

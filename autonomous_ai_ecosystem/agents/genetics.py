@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..core.interfaces import AgentIdentity, AgentGender
 from ..core.logger import get_agent_logger, log_agent_event
@@ -360,7 +359,6 @@ class GeneticAlgorithm:
             profile = self.genetic_profiles[agent_id]
             
             # Analyze trait strengths
-            trait_analysis = {}
             all_traits = {**profile.personality_genes, **profile.capability_genes, **profile.behavioral_genes}
             
             # Find strongest and weakest traits

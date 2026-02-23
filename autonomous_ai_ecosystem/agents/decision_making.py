@@ -5,10 +5,9 @@ This module implements sophisticated decision-making algorithms that consider
 emotional state, personality traits, memory, and environmental factors.
 """
 
-import math
 import random
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
 

@@ -18,10 +18,7 @@ from autonomous_ai_ecosystem.knowledge.model_trainer import (
     TrainingStatus
 )
 from autonomous_ai_ecosystem.knowledge.dataset_manager import (
-    DatasetManager,
-    KnowledgeEntry,
-    KnowledgeCategory,
-    KnowledgeSource
+    DatasetManager
 )
 
 

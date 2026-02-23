@@ -11,9 +11,10 @@ import asyncio
 import time
 import random
 import statistics
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Tuple
-from unittest.mock import Mock, patch, AsyncMock
+from datetime import datetime
+from typing import Optional
+from typing import Dict, List, Any
+from unittest.mock import Mock, patch
 from dataclasses import dataclass, field
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
@@ -285,7 +286,7 @@ class StressTestFramework:
         results: Dict[str, Any]
     ) -> None:
         """Execute the simulation scenario."""
-        end_time = time.time() + scenario.duration_seconds
+        time.time() + scenario.duration_seconds
         
         # Start agent behavior tasks
         behavior_tasks = []

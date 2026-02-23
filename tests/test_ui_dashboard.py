@@ -4,7 +4,6 @@ Unit tests for the ecosystem dashboard and monitoring UI.
 
 import pytest
 import pytest_asyncio
-import asyncio
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 
@@ -442,9 +441,9 @@ async def test_monitoring_interface_data_collection_tasks(mock_orchestrator):
     interface = MonitoringInterface(mock_orchestrator)
     
     # Mock the data collection methods
-    with patch.object(interface, '_collect_agent_network_data') as mock_network, \
-         patch.object(interface, '_collect_system_metrics_data') as mock_metrics, \
-         patch.object(interface, '_collect_agent_activities_data') as mock_activities:
+    with patch.object(interface, '_collect_agent_network_data'), \
+         patch.object(interface, '_collect_system_metrics_data'), \
+         patch.object(interface, '_collect_agent_activities_data'):
         
         await interface._start_data_collectors()
         

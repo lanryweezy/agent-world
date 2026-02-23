@@ -7,14 +7,12 @@ and security restrictions.
 
 import pytest
 import asyncio
-import tempfile
 import os
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 
 from autonomous_ai_ecosystem.agents.sandbox import (
     CodeSandbox, SandboxMode, ExecutionStatus, SandboxLimits,
-    SandboxEnvironment, ExecutionResult, RestrictedBuiltins,
-    SandboxViolationError, TimeoutError
+    ExecutionResult, RestrictedBuiltins
 )
 from autonomous_ai_ecosystem.agents.code_analyzer import CodeAnalyzer
 
@@ -202,7 +200,7 @@ while True:
             blocked_modules=["os", "sys"]
         )
         
-        assert success == True
+        assert success
         assert "custom_env" in code_sandbox.environments
         
         env = code_sandbox.environments["custom_env"]
