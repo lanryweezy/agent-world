@@ -6,17 +6,16 @@ reasoning, planning, and decision-making capabilities for intelligent agent beha
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 from .brain import AIBrain, ThoughtType, ThoughtProcess
-from .reasoning import ReasoningEngine, PlanningEngine, ReasoningType
-from .daily_planner import DailyPlanner, ActivityType
+from .reasoning import ReasoningEngine, PlanningEngine
+from .daily_planner import DailyPlanner
 from .emotions import EmotionEngine
 from .memory import MemorySystem
 
@@ -52,6 +51,7 @@ class ThoughtRequest:
     related_goals: List[str] = field(default_factory=list)
     emotional_context: Dict[str, float] = field(default_factory=dict)
     memory_context: List[str] = field(default_factory=list)
+    conversation_history: List[Dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -91,6 +91,7 @@ class ThoughtProcessor(AgentModule):
         self.reasoning_engine = reasoning_engine
         self.planning_engine = planning_engine
         self.daily_planner = daily_planner
+        self.daily_planner = daily_planner
         self.emotion_engine = emotion_engine
         self.memory_system = memory_system
         self.personality_traits = personality_traits
@@ -104,6 +105,7 @@ class ThoughtProcessor(AgentModule):
         # Processing history
         self.thought_history: List[ThoughtResult] = []
         self.max_history_size = 500
+        self.last_goal_review_time = datetime.now()
         
         # Processing statistics
         self.processing_stats = {
@@ -245,7 +247,8 @@ class ThoughtProcessor(AgentModule):
         self,
         situation: str,
         context: Dict[str, Any] = None,
-        priority: ThoughtPriority = ThoughtPriority.MEDIUM
+        priority: ThoughtPriority = ThoughtPriority.MEDIUM,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> ThoughtResult:
         """
         Think about a specific situation comprehensively.
@@ -254,6 +257,7 @@ class ThoughtProcessor(AgentModule):
             situation: Description of the situation
             context: Additional context information
             priority: Priority level for processing
+            conversation_history: Optional list of past conversational turns.
             
         Returns:
             ThoughtResult with comprehensive analysis
@@ -270,7 +274,8 @@ class ThoughtProcessor(AgentModule):
                 },
                 required_capabilities=["analysis", "reasoning", "planning"],
                 emotional_context=self.emotion_engine.get_current_emotional_state(),
-                memory_context=await self._get_relevant_memories(situation)
+                memory_context=await self._get_relevant_memories(situation),
+                conversation_history=conversation_history or []
             )
             
             return await self.process_immediate_thought(request)
@@ -283,7 +288,8 @@ class ThoughtProcessor(AgentModule):
         self,
         goal_description: str,
         constraints: List[str] = None,
-        deadline: Optional[datetime] = None
+        deadline: Optional[datetime] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> ThoughtResult:
         """
         Create a comprehensive plan for achieving a goal.
@@ -292,6 +298,7 @@ class ThoughtProcessor(AgentModule):
             goal_description: Description of the goal
             constraints: Any constraints to consider
             deadline: Optional deadline for the goal
+            conversation_history: Optional list of past conversational turns.
             
         Returns:
             ThoughtResult with planning analysis
@@ -309,7 +316,8 @@ class ThoughtProcessor(AgentModule):
                 },
                 required_capabilities=["planning", "reasoning", "analysis"],
                 deadline=deadline,
-                emotional_context=self.emotion_engine.get_current_emotional_state()
+                emotional_context=self.emotion_engine.get_current_emotional_state(),
+                conversation_history=conversation_history or []
             )
             
             return await self.process_immediate_thought(request)
@@ -322,7 +330,8 @@ class ThoughtProcessor(AgentModule):
         self,
         experience: Dict[str, Any],
         outcomes: Dict[str, Any],
-        emotions: Dict[str, float] = None
+        emotions: Dict[str, float] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> ThoughtResult:
         """
         Reflect on an experience to extract learnings.
@@ -331,6 +340,7 @@ class ThoughtProcessor(AgentModule):
             experience: Description of the experience
             outcomes: What happened as a result
             emotions: Emotional response to the experience
+            conversation_history: Optional list of past conversational turns.
             
         Returns:
             ThoughtResult with reflection insights
@@ -346,7 +356,8 @@ class ThoughtProcessor(AgentModule):
                     "thinking_mode": "reflection"
                 },
                 required_capabilities=["reflection", "analysis", "learning"],
-                emotional_context=emotions or self.emotion_engine.get_current_emotional_state()
+                emotional_context=emotions or self.emotion_engine.get_current_emotional_state(),
+                conversation_history=conversation_history or []
             )
             
             return await self.process_immediate_thought(request)
@@ -359,7 +370,8 @@ class ThoughtProcessor(AgentModule):
         self,
         problem: str,
         context: Dict[str, Any] = None,
-        constraints: List[str] = None
+        constraints: List[str] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> ThoughtResult:
         """
         Solve a problem using creative and analytical thinking.
@@ -368,6 +380,7 @@ class ThoughtProcessor(AgentModule):
             problem: Problem description
             context: Problem context
             constraints: Any constraints on the solution
+            conversation_history: Optional list of past conversational turns.
             
         Returns:
             ThoughtResult with problem solution
@@ -385,7 +398,8 @@ class ThoughtProcessor(AgentModule):
                 },
                 required_capabilities=["problem_solving", "creativity", "reasoning", "analysis"],
                 emotional_context=self.emotion_engine.get_current_emotional_state(),
-                memory_context=await self._get_relevant_memories(problem)
+                memory_context=await self._get_relevant_memories(problem),
+                conversation_history=conversation_history or []
             )
             
             return await self.process_immediate_thought(request)
@@ -447,6 +461,11 @@ class ThoughtProcessor(AgentModule):
                         self.logger.error(f"Failed to process background thought {request.request_id}: {e}")
                         self._update_processing_stats(None, success=False)
                 
+                # Periodically review long-term goals
+                if (datetime.now() - self.last_goal_review_time).total_seconds() > 3600: # Review every hour
+                    await self.daily_planner._review_long_term_goals()
+                    self.last_goal_review_time = datetime.now()
+                
                 else:
                     # No thoughts to process, wait a bit
                     await asyncio.sleep(1.0)
@@ -467,11 +486,6 @@ class ThoughtProcessor(AgentModule):
     async def _process_thought_request(self, request: ThoughtRequest) -> ThoughtResult:
         """Process a single thought request."""
         try:
-            thought_processes = []
-            reasoning_chains = []
-            decisions_made = []
-            actions_planned = []
-            insights_gained = []
             
             # Determine processing strategy based on context
             thinking_mode = request.context.get("thinking_mode", "general")
@@ -502,14 +516,16 @@ class ThoughtProcessor(AgentModule):
         analysis_thought = await self.ai_brain.analyze_situation(
             situation=situation,
             available_data=context,
-            goals=request.related_goals
+            goals=request.related_goals,
+            conversation_history=request.conversation_history
         )
         
         # Step 2: Perform deductive reasoning
         premises = [
             situation,
             f"Available information: {context}",
-            f"Current emotional state: {request.emotional_context}"
+            f"Current emotional state: {request.emotional_context}",
+            f"Conversation history: {request.conversation_history}"
         ]
         deductive_reasoning = await self.reasoning_engine.reason_deductively(premises)
         
@@ -574,6 +590,7 @@ class ThoughtProcessor(AgentModule):
             f"Goal: {goal}",
             f"Plan steps: {len(plan.steps)}",
             f"Constraints: {constraints}",
+            f"Conversation history: {request.conversation_history}",
             "Need to ensure plan is feasible and effective"
         ])
         
@@ -614,14 +631,16 @@ class ThoughtProcessor(AgentModule):
         reflection_result = await self.ai_brain.reflect_on_experience(
             experience=experience,
             outcomes=outcomes,
-            emotions=request.emotional_context
+            emotions=request.emotional_context,
+            conversation_history=request.conversation_history
         )
         
         # Step 2: Reason about lessons learned
         lessons_reasoning = await self.reasoning_engine.reason_inductively([
             f"Experience: {experience}",
             f"Outcomes: {outcomes}",
-            f"Emotional response: {request.emotional_context}"
+            f"Emotional response: {request.emotional_context}",
+            f"Conversation history: {request.conversation_history}"
         ])
         
         # Step 3: Store insights in memory
@@ -669,14 +688,16 @@ class ThoughtProcessor(AgentModule):
         solution_result = await self.ai_brain.solve_problem(
             problem=problem,
             context=context,
-            constraints=constraints
+            constraints=constraints,
+            conversation_history=request.conversation_history
         )
         
         # Step 2: Generate creative alternatives
         creative_result = await self.ai_brain.generate_creative_content(
             content_type="problem_solution",
             theme=problem,
-            requirements={"constraints": constraints, "context": context}
+            requirements={"constraints": constraints, "context": context},
+            conversation_history=request.conversation_history
         )
         
         # Step 3: Reason about best approach
@@ -685,7 +706,8 @@ class ThoughtProcessor(AgentModule):
             possible_explanations=[
                 solution_result.get("solution", ""),
                 creative_result.get("content", "")
-            ]
+            ],
+            context=f"Conversation history: {request.conversation_history}"
         )
         
         insights = [
@@ -723,7 +745,8 @@ class ThoughtProcessor(AgentModule):
         # Basic analysis
         analysis_thought = await self.ai_brain.think(
             ThoughtType.ANALYSIS,
-            context
+            context,
+            conversation_history=request.conversation_history
         )
         
         insights = [analysis_thought.output.get("response", "General thinking completed")]
@@ -745,8 +768,7 @@ class ThoughtProcessor(AgentModule):
         try:
             memories = await self.memory_system.retrieve_memories(
                 query=query,
-                limit=5,
-                min_importance=0.6
+                limit=5
             )
             return [memory.content for memory in memories]
         except Exception as e:

@@ -15,8 +15,9 @@ from collections import Counter
 
 from ..core.interfaces import Knowledge, AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .web_browser import WebPage, ContentTypeclass Kn
-owledgeType(Enum):
+from .web_browser import WebPage, ContentType
+
+class KnowledgeType(Enum):
     """Types of knowledge that can be extracted."""
     FACTUAL = "factual"
     PROCEDURAL = "procedural"
@@ -61,8 +62,10 @@ class KnowledgeEvaluation:
     credibility_score: float
     completeness_score: float
     overall_score: float
-    evaluation_notes: List[str] = field(default_factory=list)class K
-nowledgeExtractor(AgentModule):
+    evaluation_notes: List[str] = field(default_factory=list)
+
+@dataclass
+class KnowledgeExtractor(AgentModule):
     """
     Advanced knowledge extraction system that identifies, extracts, and evaluates
     valuable knowledge from web content and other sources.
@@ -206,7 +209,7 @@ nowledgeExtractor(AgentModule):
         except Exception as e:
             self.logger.error(f"Failed to extract knowledge from page: {e}")
             return [] 
-   async def evaluate_knowledge_quality(self, knowledge: ExtractedKnowledge) -> KnowledgeEvaluation:
+    async def evaluate_knowledge_quality(self, knowledge: ExtractedKnowledge) -> KnowledgeEvaluation:
         """
         Evaluate the quality of extracted knowledge.
         
@@ -275,7 +278,7 @@ nowledgeExtractor(AgentModule):
             self.logger.error(f"Failed to evaluate knowledge quality: {e}")
             return KnowledgeEvaluation(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     
-    def update_interests(self, new_interests: List[str], weights: Optional[Dict[str, float]] = None) -> None:
+        def update_interests(self, new_interests: List[str], weights: Optional[Dict[str, float]] = None) -> None:
         """
         Update agent's learning interests.
         
@@ -352,11 +355,9 @@ nowledgeExtractor(AgentModule):
             "total_interests": len(self.interests),
             "known_concepts_count": len(self.known_concepts),
             "knowledge_history_size": len(self.knowledge_history)
-        }   
- # Private extraction methods
-    
+                }
+        
     async def _extract_by_keywords(self, page: WebPage) -> List[ExtractedKnowledge]:
-        """Extract knowledge based on keyword patterns."""
         try:
             extracted = []
             content = page.content.lower()
@@ -481,7 +482,7 @@ nowledgeExtractor(AgentModule):
         except Exception as e:
             self.logger.error(f"Entity extraction failed: {e}")
             return []    
-async def _extract_by_definitions(self, page: WebPage) -> List[ExtractedKnowledge]:
+    async def _extract_by_definitions(self, page: WebPage) -> List[ExtractedKnowledge]:
         """Extract definitional knowledge."""
         try:
             extracted = []
@@ -577,7 +578,6 @@ async def _extract_by_definitions(self, page: WebPage) -> List[ExtractedKnowledg
     # Private helper methods
     
     def _initialize_extraction_patterns(self) -> Dict[str, Dict[str, Any]]:
-        """Initialize patterns for knowledge extraction."""
         return {
             'causal_relationship': {
                 'pattern': r'(.+?)\s+(?:causes|leads to|results in|triggers)\s+(.+?)(?:\.|,|;)',
@@ -611,8 +611,7 @@ async def _extract_by_definitions(self, page: WebPage) -> List[ExtractedKnowledg
             'relevance_weight': 0.3,
             'credibility_weight': 0.25,
             'completeness_weight': 0.25
-        }    def
- _filter_and_deduplicate(self, knowledge_list: List[ExtractedKnowledge]) -> List[ExtractedKnowledge]:
+        }    def _filter_and_deduplicate(self, knowledge_list: List[ExtractedKnowledge]) -> List[ExtractedKnowledge]:
         """Filter and remove duplicate knowledge items."""
         try:
             # Filter by quality criteria
@@ -758,7 +757,7 @@ async def _extract_by_definitions(self, page: WebPage) -> List[ExtractedKnowledg
             
         except Exception:
             return 0.5 
-   def _calculate_pattern_relevance(self, text: str) -> float:
+    def _calculate_pattern_relevance(self, text: str) -> float:
         """Calculate relevance of pattern-matched text."""
         try:
             relevance = 0.5

@@ -6,12 +6,10 @@ relationships, and system metrics with interactive controls.
 """
 
 import asyncio
-import json
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event

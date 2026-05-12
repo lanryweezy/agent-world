@@ -15,7 +15,6 @@ from autonomous_ai_ecosystem.world.construction import (
     ContributionType,
     ConflictType,
     ResourceRequirement,
-    ProjectContribution,
     ConstructionConflict
 )
 from autonomous_ai_ecosystem.world.virtual_world import (

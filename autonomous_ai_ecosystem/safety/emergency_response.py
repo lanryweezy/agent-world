@@ -11,13 +11,10 @@ import os
 import shutil
 import signal
 import sys
-import traceback
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Set
+from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
-import threading
 import psutil
 
 from ..core.interfaces import AgentModule
@@ -778,7 +775,7 @@ class EmergencyResponseSystem(AgentModule):
             incident.add_action("Starting shutdown sequence")
             
             # Set timeout for shutdown
-            shutdown_timeout = self.config["shutdown_timeout_seconds"]
+            self.config["shutdown_timeout_seconds"]
             
             if self.config["enable_graceful_shutdown"]:
                 # Graceful shutdown

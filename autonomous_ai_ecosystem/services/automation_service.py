@@ -6,15 +6,10 @@ task scheduling, workflow orchestration, and automated process execution.
 """
 
 import asyncio
-import json
-import subprocess
-import shlex
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable, Union
+from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
-import cron_descriptor
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -601,7 +596,7 @@ class WorkflowAutomationService(AgentModule):
             execution.add_log(f"Starting workflow execution: {workflow.name}")
             
             # Build task dependency graph
-            task_graph = self._build_task_dependency_graph(workflow.tasks)
+            self._build_task_dependency_graph(workflow.tasks)
             
             # Execute tasks in dependency order
             completed_tasks = set()

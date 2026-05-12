@@ -5,13 +5,10 @@ This module implements social relationship tracking, influence calculation,
 and command authority systems for agent interactions.
 """
 
-import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import math
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event

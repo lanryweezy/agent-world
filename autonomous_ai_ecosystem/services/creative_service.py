@@ -6,13 +6,11 @@ text generation, idea brainstorming, creative writing, and content optimization.
 """
 
 import asyncio
-import json
 import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -834,27 +832,27 @@ class CreativeContentService(AgentModule):
                 f"and provide valuable insights for {request.target_audience}.\n\n",
                 f"## Understanding {request.topic}\n\n",
                 f"When we consider {request.topic.lower()}, several factors come into play. ",
-                f"The most important aspects include practical applications, benefits, and considerations.\n\n",
-                f"## Key Benefits\n\n",
+                "The most important aspects include practical applications, benefits, and considerations.\n\n",
+                "## Key Benefits\n\n",
                 f"The advantages of {request.topic.lower()} are numerous:\n\n",
-                f"- Improved efficiency and effectiveness\n",
-                f"- Enhanced user experience\n",
+                "- Improved efficiency and effectiveness\n",
+                "- Enhanced user experience\n",
                 f"- Better outcomes for {request.target_audience}\n\n",
-                f"## Conclusion\n\n",
+                "## Conclusion\n\n",
                 f"In conclusion, {request.topic.lower()} represents a valuable opportunity ",
                 f"for {request.target_audience} to achieve their goals more effectively."
             ],
             ContentType.STORY: [
                 f"Once upon a time, in a world where {request.topic.lower()} was the norm, ",
-                f"there lived a character who would change everything.\n\n",
-                f"The story begins with an ordinary day that would become extraordinary. ",
+                "there lived a character who would change everything.\n\n",
+                "The story begins with an ordinary day that would become extraordinary. ",
                 f"Our protagonist faced challenges related to {request.topic.lower()} ",
-                f"that would test their resolve and determination.\n\n",
+                "that would test their resolve and determination.\n\n",
                 f"Through trials and tribulations, they discovered that {request.topic.lower()} ",
-                f"held the key to solving their problems. The journey was not easy, ",
-                f"but the lessons learned were invaluable.\n\n",
+                "held the key to solving their problems. The journey was not easy, ",
+                "but the lessons learned were invaluable.\n\n",
                 f"In the end, they realized that {request.topic.lower()} was not just about ",
-                f"the destination, but about the growth that happened along the way."
+                "the destination, but about the growth that happened along the way."
             ]
         }
         

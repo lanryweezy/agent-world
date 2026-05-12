@@ -6,14 +6,9 @@ to understand code structure, detect capabilities, and enable safe code modifica
 """
 
 import ast
-import inspect
-import importlib
-import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event

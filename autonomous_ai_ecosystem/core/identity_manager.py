@@ -9,15 +9,14 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from dataclasses import asdict
+from typing import Dict, List, Optional
 
 from .interfaces import AgentIdentity, AgentGender
 from .logger import get_agent_logger
-from ..utils.validators import validate_agent_identity, validate_personality_traits
+from ..utils.validators import validate_agent_identity
 from ..utils.generators import (
     generate_agent_id, generate_agent_name, generate_personality_traits,
-    generate_destiny, generate_learning_interests
+    generate_destiny
 )
 
 

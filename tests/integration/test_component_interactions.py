@@ -7,12 +7,10 @@ and that data flows properly between systems.
 
 import pytest
 import pytest_asyncio
-import asyncio
 import os
 import tempfile
 import shutil
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
     EcosystemOrchestrator,
@@ -304,7 +302,7 @@ async def test_emergency_response_system_integration(interaction_config):
         
         # 8. Verify the agent's capability scoring is severely impacted
         # First register a capability for the dangerous agent
-        capability_id = await orchestrator.capability_registry.register_capability(
+        await orchestrator.capability_registry.register_capability(
             agent_id="dangerous_agent",
             service_type="coding",
             capabilities=["code_execution"],
@@ -477,7 +475,7 @@ async def test_cross_system_data_flow(interaction_config):
         
         # 1. Create an agent and register capabilities
         with patch.object(orchestrator.agent_manager, 'spawn_agent', return_value="process_456"):
-            agent_id = await orchestrator.spawn_agent({
+            await orchestrator.spawn_agent({
                 "agent_id": "data_flow_agent",
                 "config": {"type": "research"}
             })
@@ -558,13 +556,13 @@ async def test_system_state_consistency(interaction_config):
         
         # 1. Create agent and verify state consistency
         with patch.object(orchestrator.agent_manager, 'spawn_agent', return_value="process_789"):
-            agent_id = await orchestrator.spawn_agent({
+            await orchestrator.spawn_agent({
                 "agent_id": "consistency_test_agent",
                 "config": {"type": "general"}
             })
         
         # 2. Register capabilities and verify they're reflected in all systems
-        capability_id = await orchestrator.capability_registry.register_capability(
+        await orchestrator.capability_registry.register_capability(
             agent_id="consistency_test_agent",
             service_type="general",
             capabilities=["basic_tasks"],
@@ -572,7 +570,7 @@ async def test_system_state_consistency(interaction_config):
         )
         
         # 3. Submit feedback and verify it affects capability scoring
-        feedback_id = await orchestrator.quality_feedback.submit_feedback(
+        await orchestrator.quality_feedback.submit_feedback(
             service_id="general_service_1",
             agent_id="consistency_test_agent",
             rating=3.8,
@@ -626,7 +624,7 @@ async def test_system_state_consistency(interaction_config):
         assert len(updated_violations) > 0
         
         # 9. Submit negative feedback due to safety issue
-        safety_feedback_id = await orchestrator.quality_feedback.submit_feedback(
+        await orchestrator.quality_feedback.submit_feedback(
             service_id="general_service_2",
             agent_id="consistency_test_agent",
             rating=1.0,

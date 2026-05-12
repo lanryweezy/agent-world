@@ -3,14 +3,11 @@ Unit tests for the service capability registry.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.services.capability_registry import (
     ServiceCapabilityRegistry,
     ServiceCapability,
-    ServiceRequest,
     ServiceMatch,
     ServiceType,
     ExpertiseLevel,
@@ -164,7 +161,7 @@ class TestServiceCapabilityRegistry:
             specializations=["academic", "technical"]
         )
         
-        cap3_id = await registry.register_capability(
+        await registry.register_capability(
             agent_id="agent3",
             service_type=ServiceType.CODING,
             name="Coding Service",

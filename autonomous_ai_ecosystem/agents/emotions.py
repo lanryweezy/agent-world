@@ -6,16 +6,14 @@ responses, and dynamic emotional evolution based on experiences and interactions
 """
 
 import math
-import random
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, field
+from typing import Dict, List, Any
+from dataclasses import dataclass
 from enum import Enum
 import copy
 
 from ..core.interfaces import AgentModule
-from ..core.logger import get_agent_logger, log_agent_event
+from ..core.logger import get_agent_logger
 
 
 class EmotionType(Enum):

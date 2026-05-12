@@ -4,10 +4,10 @@ Unit tests for web browser automation framework.
 
 import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch, MagicMock
 
 from autonomous_ai_ecosystem.learning.web_browser import (
-    WebBrowser, WebPage, BrowsingSession, ContentFilter,
+    WebBrowser, WebPage, ContentFilter,
     BrowsingStrategy, ContentType
 )
 
@@ -31,7 +31,7 @@ class TestContentFilter:
         ]
         
         for url in safe_urls:
-            assert self.content_filter.is_safe_url(url) == True
+            assert self.content_filter.is_safe_url(url)
         
         # Unsafe URLs
         unsafe_urls = [
@@ -42,7 +42,7 @@ class TestContentFilter:
         ]
         
         for url in unsafe_urls:
-            assert self.content_filter.is_safe_url(url) == False
+            assert not self.content_filter.is_safe_url(url)
     
     def test_safe_content_detection(self):
         """Test safe content detection."""
@@ -54,7 +54,7 @@ class TestContentFilter:
         ]
         
         for content in safe_content:
-            assert self.content_filter.is_safe_content(content) == True
+            assert self.content_filter.is_safe_content(content)
         
         # Unsafe content
         unsafe_content = [
@@ -64,7 +64,7 @@ class TestContentFilter:
         ]
         
         for content in unsafe_content:
-            assert self.content_filter.is_safe_content(content) == False
+            assert not self.content_filter.is_safe_content(content)
     
     def test_credibility_score_calculation(self):
         """Test credibility score calculation."""
@@ -114,7 +114,7 @@ class TestWebBrowser:
         assert self.web_browser.config == self.config
         assert self.web_browser.timeout == 10
         assert self.web_browser.max_pages_per_session == 5
-        assert self.web_browser.content_filter_enabled == True
+        assert self.web_browser.content_filter_enabled
     
     @pytest.mark.asyncio
     async def test_browsing_session_management(self):
@@ -228,7 +228,7 @@ class TestWebBrowser:
         # All should be zero initially
         assert initial_stats["total_sessions"] == 0
         assert initial_stats["total_pages_visited"] == 0
-        assert initial_stats["current_session_active"] == False
+        assert not initial_stats["current_session_active"]
     
     @pytest.mark.asyncio
     async def test_recent_pages_retrieval(self):
@@ -301,7 +301,7 @@ class TestWebBrowser:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__])@
+    pytest.main([__file__])
 pytest.mark.asyncio
 class TestKnowledgeExtractor:
     """Test cases for KnowledgeExtractor."""
@@ -309,7 +309,7 @@ class TestKnowledgeExtractor:
     def setup_method(self):
         """Set up test environment."""
         from autonomous_ai_ecosystem.learning.knowledge_extractor import (
-            KnowledgeExtractor, ExtractedKnowledge, KnowledgeType, ExtractionMethod
+            KnowledgeExtractor
         )
         
         self.agent_id = "test_agent_knowledge"

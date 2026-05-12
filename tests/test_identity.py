@@ -5,12 +5,10 @@ Unit tests for agent identity and state management systems.
 import pytest
 import tempfile
 import shutil
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 
-from autonomous_ai_ecosystem.core.interfaces import AgentIdentity, AgentState, AgentGender, AgentStatus
+from autonomous_ai_ecosystem.core.interfaces import AgentIdentity, AgentGender
 from autonomous_ai_ecosystem.core.identity_manager import IdentityManager
-from autonomous_ai_ecosystem.core.state_manager import StateManager
 from autonomous_ai_ecosystem.utils.generators import generate_personality_traits
 
 
@@ -319,7 +317,7 @@ class TestIdentityManager:
         # Create some children
         all_agents = self.identity_manager.get_all_identities()
         if len(all_agents) >= 2:
-            child = self.identity_manager.create_child_agent(all_agents[0], all_agents[1])
+            self.identity_manager.create_child_agent(all_agents[0], all_agents[1])
         
         stats = self.identity_manager.get_statistics()
         

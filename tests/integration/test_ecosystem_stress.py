@@ -14,9 +14,8 @@ import shutil
 import time
 import random
 import threading
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
-from typing import List, Dict, Any
+from unittest.mock import patch
+from typing import Dict, Any
 import psutil
 
 from autonomous_ai_ecosystem.ecosystem_orchestrator import (
@@ -135,7 +134,6 @@ async def test_concurrent_operation_stress(stress_config):
         monitor.start_monitoring()
         
         # Create a large number of concurrent operations
-        concurrent_tasks = []
         
         # Spawn many agents concurrently
         agent_spawn_tasks = []
@@ -189,10 +187,10 @@ async def test_concurrent_operation_stress(stress_config):
             async def service_operation(op_num):
                 try:
                     # System status check
-                    status = await orchestrator.get_system_status()
+                    await orchestrator.get_system_status()
                     
                     # Safety validation
-                    validation = await orchestrator.safety_validator.validate_code(
+                    await orchestrator.safety_validator.validate_code(
                         code=f"print('Stress test operation {op_num}')",
                         agent_id=f"stress_agent_{op_num % len(successful_spawns)}",
                         context="stress_test"
@@ -260,7 +258,7 @@ async def test_concurrent_operation_stress(stress_config):
         monitor.stop_monitoring()
         peak_usage = monitor.get_peak_usage()
         
-        print(f"\nConcurrent Operation Stress Results:")
+        print("\nConcurrent Operation Stress Results:")
         print(f"  Successful agent spawns: {len(successful_spawns)}/50")
         print(f"  Successful capability registrations: {len(successful_capabilities)}/30")
         print(f"  Successful service operations: {len(successful_services)}/100")
@@ -314,7 +312,7 @@ async def test_memory_leak_stress(stress_config):
             
             # Register and use capabilities
             for agent_id in agents_created:
-                capability_id = await orchestrator.capability_registry.register_capability(
+                await orchestrator.capability_registry.register_capability(
                     agent_id=agent_id,
                     service_type="leak_test",
                     capabilities=["memory_operations"],
@@ -325,13 +323,13 @@ async def test_memory_leak_stress(stress_config):
                 for _ in range(5):
                     await orchestrator.get_system_status()
                     
-                    validation = await orchestrator.safety_validator.validate_code(
+                    await orchestrator.safety_validator.validate_code(
                         code="x = list(range(100))",
                         agent_id=agent_id,
                         context="leak_test"
                     )
                     
-                    feedback_id = await orchestrator.quality_feedback.submit_feedback(
+                    await orchestrator.quality_feedback.submit_feedback(
                         service_id=f"leak_service_{iteration}_{_}",
                         agent_id=agent_id,
                         rating=4.0,
@@ -368,7 +366,7 @@ async def test_memory_leak_stress(stress_config):
         monitor.stop_monitoring()
         peak_usage = monitor.get_peak_usage()
         
-        print(f"\nMemory Leak Stress Results:")
+        print("\nMemory Leak Stress Results:")
         print(f"  Initial memory: {initial_memory:.1f}MB")
         print(f"  Final memory: {final_memory:.1f}MB")
         print(f"  Total growth: {total_growth:+.1f}MB")
@@ -413,7 +411,7 @@ async def test_failure_recovery_stress(stress_config):
                 baseline_agents.append(spawned_agent_id)
                 
                 # Register capabilities
-                capability_id = await orchestrator.capability_registry.register_capability(
+                await orchestrator.capability_registry.register_capability(
                     agent_id=agent_id,
                     service_type="recovery_test",
                     capabilities=["failure_recovery"],
@@ -492,7 +490,7 @@ async def test_failure_recovery_stress(stress_config):
         
         # Report incidents for all failures
         for cycle in range(recovery_cycles):
-            incident_id = await orchestrator.emergency_response.report_incident(
+            await orchestrator.emergency_response.report_incident(
                 level="high",
                 reason="stress_test_failure",
                 description=f"Failure recovery stress test cycle {cycle}",
@@ -502,7 +500,7 @@ async def test_failure_recovery_stress(stress_config):
         monitor.stop_monitoring()
         peak_usage = monitor.get_peak_usage()
         
-        print(f"\nFailure Recovery Stress Results:")
+        print("\nFailure Recovery Stress Results:")
         print(f"  Recovery cycles: {recovery_cycles}")
         print(f"  Successful recoveries: {successful_recoveries}")
         print(f"  Recovery success rate: {successful_recoveries/recovery_cycles*100:.1f}%")
@@ -545,7 +543,7 @@ async def test_long_running_stability(stress_config):
                 })
                 persistent_agents.append(spawned_agent_id)
                 
-                capability_id = await orchestrator.capability_registry.register_capability(
+                await orchestrator.capability_registry.register_capability(
                     agent_id=agent_id,
                     service_type="stability",
                     capabilities=["long_running_operations"],
@@ -618,7 +616,7 @@ async def test_long_running_stability(stress_config):
         monitor.stop_monitoring()
         peak_usage = monitor.get_peak_usage()
         
-        print(f"\nLong-Running Stability Results:")
+        print("\nLong-Running Stability Results:")
         print(f"  Runtime: {actual_runtime:.1f}s")
         print(f"  Operations completed: {operation_count}")
         print(f"  Operations per second: {operation_count/actual_runtime:.1f}")

@@ -13,13 +13,10 @@ try:
     import resource
 except ImportError:
     resource = None  # Not available on Windows
-import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple, Callable
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
-import hashlib
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -714,7 +711,7 @@ class ComprehensiveSafetyValidator(AgentModule):
                         self.resource_usage_history[agent_id] = self.resource_usage_history[agent_id][-self.config["resource_history_limit"]:]
                     
                     # Check for violations
-                    resource_violations = await self._check_resource_violations(agent_id, usage)
+                    await self._check_resource_violations(agent_id, usage)
                     
                     # Check for anomalies
                     anomaly_violations = await self._detect_behavior_anomalies(agent_id, usage)

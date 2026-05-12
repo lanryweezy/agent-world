@@ -10,18 +10,14 @@ import json
 import os
 import random
 import shutil
-import subprocess
-import tempfile
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
-import hashlib
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .dataset_manager import DatasetManager, KnowledgeEntry, KnowledgeCategory
+from .dataset_manager import DatasetManager, KnowledgeEntry
 
 
 class ModelType(Enum):
@@ -574,7 +570,7 @@ class ModelTrainer(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to evaluate model: {e}")
-            return {"success": False, "error": str(e)}"    
+            return {"success": False, "error": str(e)}    
 
     async def deploy_model(
         self,
@@ -1156,7 +1152,7 @@ class ModelTrainer(AgentModule):
             
             # Simulate evaluation metrics based on training performance
             if job.training_loss and job.validation_loss:
-                final_train_loss = job.training_loss[-1]
+                job.training_loss[-1]
                 final_val_loss = job.validation_loss[-1]
                 
                 # Convert loss to accuracy (simplified)

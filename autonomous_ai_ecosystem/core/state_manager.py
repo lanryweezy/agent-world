@@ -9,8 +9,7 @@ import json
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import asdict
+from typing import Dict, List, Optional, Any
 
 from .interfaces import AgentState, AgentStatus
 from .logger import get_agent_logger, log_agent_event

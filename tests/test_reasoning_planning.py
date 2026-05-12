@@ -6,11 +6,10 @@ components for correct functionality and integration.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta, time
-from unittest.mock import Mock, AsyncMock, patch
+from datetime import datetime, timedelta
+from unittest.mock import Mock, AsyncMock
 
-from autonomous_ai_ecosystem.agents.brain import AIBrain, ThoughtType, LLMConfig
+from autonomous_ai_ecosystem.agents.brain import AIBrain
 from autonomous_ai_ecosystem.agents.reasoning import (
     ReasoningEngine, PlanningEngine, ReasoningType, 
     Goal, GoalStatus, PlanningStrategy
@@ -380,7 +379,7 @@ class TestDailyPlanner:
         await daily_planner.initialize()
         
         # Create plan with activities
-        plan = await daily_planner.create_daily_plan()
+        await daily_planner.create_daily_plan()
         
         # Execute next activity
         result = await daily_planner.execute_next_activity()
@@ -716,7 +715,7 @@ class TestThoughtProcessor:
         # Test queue status
         status = thought_processor.get_thought_queue_status()
         assert status["queue_size"] == 0
-        assert status["processing_active"] == False
+        assert not status["processing_active"]
         
         # Add requests manually to test prioritization
         requests = [
@@ -784,7 +783,7 @@ class TestThoughtProcessor:
         # Shutdown should process remaining thoughts
         await thought_processor.shutdown()
         
-        assert thought_processor.processing_active == False
+        assert not thought_processor.processing_active
         assert thought_processor.background_task.cancelled()
 
 

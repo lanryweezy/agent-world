@@ -19,7 +19,7 @@ from autonomous_ai_ecosystem.core.agent_core import AgentCore
 from autonomous_ai_ecosystem.core.interfaces import AgentIdentity, AgentGender
 from autonomous_ai_ecosystem.utils.generators import (
     generate_agent_id, generate_agent_name, generate_personality_traits, 
-    generate_destiny, generate_emotional_state
+    generate_destiny
 )
 
 

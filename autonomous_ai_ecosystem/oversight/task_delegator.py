@@ -6,17 +6,14 @@ progress tracking, and status reporting for complex human tasks.
 """
 
 import asyncio
-import json
-import random
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple, Union
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .command_router import HumanCommandRouter, HumanCommand, CommandType, CommandPriority
+from .command_router import HumanCommandRouter, HumanCommand, CommandPriority
 
 
 class TaskType(Enum):

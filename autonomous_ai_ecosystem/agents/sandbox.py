@@ -10,19 +10,14 @@ import ast
 import sys
 import io
 import os
-import tempfile
-import subprocess
 import threading
 import time
 import resource
-import signal
 from pathlib import Path
-from typing import Dict, List, Optional, Any, Tuple, Callable
+from typing import Dict, List, Optional, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-from datetime import datetime, timedelta
-import traceback
+from datetime import datetime
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
@@ -669,7 +664,7 @@ class CodeSandbox(AgentModule):
                 "max_memory": usage.ru_maxrss,
                 "page_faults": usage.ru_majflt + usage.ru_minflt
             }
-        except:
+        except Exception:
             return {}
     
     def _get_default_limits(self, mode: SandboxMode) -> SandboxLimits:

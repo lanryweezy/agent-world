@@ -6,18 +6,14 @@ negotiate prices, and engage in automated trading.
 """
 
 import asyncio
-import random
-import math
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional, Any, Set, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .currency import VirtualCurrency, CurrencyType, TransactionType
+from .currency import VirtualCurrency, CurrencyType
 
 
 class ServiceCategory(Enum):
@@ -429,7 +425,7 @@ class ServiceMarketplace(AgentModule):
                 return {"success": False, "error": "Price outside allowed range"}
             
             # Check agent capability limits
-            agent_listings = [l for l in self.service_listings.values() if l.provider_id == provider_id]
+            agent_listings = [listing for listing in self.service_listings.values() if listing.provider_id == provider_id]
             if len(agent_listings) >= self.config["max_listings_per_agent"]:
                 return {"success": False, "error": "Maximum listings per agent exceeded"}
             
@@ -655,7 +651,7 @@ class ServiceMarketplace(AgentModule):
             
         except Exception as e:
             self.logger.error(f"Failed to request service: {e}")
-            return {"success": False, "error": str(e)}"    
+            return {"success": False, "error": str(e)}    
 
     async def start_contract_work(self, contract_id: str, provider_id: str) -> Dict[str, Any]:
         """Start work on a service contract."""
@@ -1010,17 +1006,17 @@ class ServiceMarketplace(AgentModule):
             # Category statistics
             category_stats = {}
             for category in ServiceCategory:
-                category_listings = [l for l in self.service_listings.values() 
+                category_listings = [listing for listing in self.service_listings.values() 
                                    if l.category == category]
                 category_stats[category.value] = {
                     "total_listings": len(category_listings),
-                    "active_listings": len([l for l in category_listings if l.is_available()]),
-                    "average_price": sum(l.base_price for l in category_listings) / max(1, len(category_listings)),
+                    "active_listings": len([listing for listing in category_listings if listing.is_available()]),
+                    "average_price": sum(listing.base_price for listing in category_listings) / max(1, len(category_listings)),
                     "demand": self.market_stats["category_demand"][category.value]
                 }
             
             # Provider statistics
-            providers = set(l.provider_id for l in self.service_listings.values())
+            providers = set(listing.provider_id for listing in self.service_listings.values())
             avg_listings_per_provider = len(self.service_listings) / max(1, len(providers))
             
             return {
@@ -1105,7 +1101,7 @@ class ServiceMarketplace(AgentModule):
                 return 1.0
             
             category_demand = self.market_stats["category_demand"][category.value]
-            category_supply = len([l for l in self.service_listings.values() 
+            category_supply = len([listing for listing in self.service_listings.values() 
                                  if l.category == category and l.is_available()])
             
             if category_supply == 0:
@@ -1123,7 +1119,7 @@ class ServiceMarketplace(AgentModule):
         try:
             # Calculate total cost including marketplace fee
             marketplace_fee = contract.agreed_price * self.config["marketplace_fee_rate"]
-            total_cost = contract.agreed_price + marketplace_fee
+            contract.agreed_price + marketplace_fee
             
             # Process payment through currency system
             payment_result = await self.currency_system.process_payment(
@@ -1227,7 +1223,7 @@ class ServiceMarketplace(AgentModule):
             listing.rating = total_rating_points / listing.total_reviews
             
             # Update market average
-            all_ratings = [l.rating for l in self.service_listings.values() if l.total_reviews > 0]
+            all_ratings = [listing.rating for listing in self.service_listings.values() if listing.total_reviews > 0]
             if all_ratings:
                 self.market_stats["average_rating"] = sum(all_ratings) / len(all_ratings)
             
@@ -1322,11 +1318,10 @@ class ServiceMarketplace(AgentModule):
                 await asyncio.sleep(3600)  # Run every hour
                 
                 # Update market statistics
-                self.market_stats["active_listings"] = len([
-                    l for l in self.service_listings.values() 
-                    if l.status == ServiceStatus.AVAILABLE
-                ])
-                
+                                self.market_stats["active_listings"] = len([
+                                    listing for listing in self.service_listings.values()
+                                    if listing.status == ServiceStatus.AVAILABLE
+                                ])                
                 # Calculate dispute rate
                 total_contracts = len(self.service_contracts)
                 disputed_contracts = len([

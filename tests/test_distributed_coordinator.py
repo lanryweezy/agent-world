@@ -4,12 +4,10 @@ Unit tests for distributed system coordination.
 
 import pytest
 import pytest_asyncio
-import asyncio
 import os
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
 
 from autonomous_ai_ecosystem.orchestration.distributed_coordinator import (
     DistributedCoordinator,

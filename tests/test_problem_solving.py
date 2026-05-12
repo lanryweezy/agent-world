@@ -6,17 +6,14 @@ for correct functionality and point calculations.
 """
 
 import pytest
-import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 
 from autonomous_ai_ecosystem.agents.problem_solver import (
-    ProblemSolver, Problem, Solution, ProblemDifficulty, ProblemCategory,
-    SolutionQuality, ProblemSolvingSession
+    ProblemSolver, Solution, ProblemDifficulty, ProblemCategory,
+    SolutionQuality
 )
 from autonomous_ai_ecosystem.agents.status_manager import (
-    StatusManager, StatusRank, StatusCategory, StatusRecord,
-    Achievement, HierarchyPosition
+    StatusManager, StatusRank, StatusCategory
 )
 from autonomous_ai_ecosystem.agents.brain import AIBrain
 from autonomous_ai_ecosystem.agents.reasoning import ReasoningEngine
@@ -264,8 +261,8 @@ def fibonacci(n, memo={}):
         
         # Beginner should get easier problems than expert
         if beginner_recommendations and expert_recommendations:
-            avg_beginner_difficulty = sum(p.difficulty.value for p in beginner_recommendations) / len(beginner_recommendations)
-            avg_expert_difficulty = sum(p.difficulty.value for p in expert_recommendations) / len(expert_recommendations)
+            sum(p.difficulty.value for p in beginner_recommendations) / len(beginner_recommendations)
+            sum(p.difficulty.value for p in expert_recommendations) / len(expert_recommendations)
             # Note: This might not always be true due to limited test data, but it's the expected behavior
     
     def test_problem_solving_statistics(self, problem_solver):
@@ -313,7 +310,7 @@ class TestStatusManager:
         assert result["points_awarded"] == 100
         assert result["new_total"] == 100
         assert result["new_rank"] == "APPRENTICE"  # 100 points should reach APPRENTICE
-        assert result["rank_changed"] == True
+        assert result["rank_changed"]
         
         # Award more points
         result2 = await status_manager.award_status_points(
@@ -324,7 +321,7 @@ class TestStatusManager:
         )
         
         assert result2["new_total"] == 150
-        assert result2["rank_changed"] == False  # Still APPRENTICE
+        assert not result2["rank_changed"]  # Still APPRENTICE
     
     @pytest.mark.asyncio
     async def test_rank_progression(self, status_manager):
@@ -362,7 +359,7 @@ class TestStatusManager:
         agent_id = "achievement_test_agent"
         
         # Award points to trigger "first_solve" achievement
-        result = await status_manager.award_status_points(
+        await status_manager.award_status_points(
             agent_id,
             25,
             StatusCategory.PROBLEM_SOLVING,
@@ -459,11 +456,11 @@ class TestStatusManager:
         
         # Check command authority
         can_command = await status_manager.can_agent_command("commander", "subordinate")
-        assert can_command == True
+        assert can_command
         
         # Check reverse (subordinate cannot command commander)
         cannot_command = await status_manager.can_agent_command("subordinate", "commander")
-        assert cannot_command == False
+        assert not cannot_command
     
     def test_achievements_leaderboard(self, status_manager):
         """Test achievements leaderboard."""

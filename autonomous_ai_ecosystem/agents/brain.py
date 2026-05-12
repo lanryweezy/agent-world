@@ -5,12 +5,11 @@ This module implements LLM integration, prompt engineering, and reasoning
 capabilities for intelligent agent behavior and decision-making.
 """
 
-import asyncio
 import json
 import time
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass
 from enum import Enum
 import openai
 import anthropic

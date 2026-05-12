@@ -3,13 +3,14 @@ Unit tests for communication components.
 """
 
 import pytest
+import asyncio
 import json
 from datetime import datetime, timedelta
 
 from autonomous_ai_ecosystem.communication.protocol import (
     MessageProtocol, MessageQueue, MessagePriority, MessageStatus
 )
-from autonomous_ai_ecosystem.core.interfaces import AgentMessage, MessageType
+from autonomous_ai_ecosystem.core.interfaces import MessageType
 from autonomous_ai_ecosystem.utils.generators import generate_agent_id
 
 
@@ -39,7 +40,7 @@ class TestMessageProtocol:
         assert message.recipient_id == self.recipient_id
         assert message.message_type == MessageType.CHAT
         assert message.priority == MessagePriority.HIGH.value
-        assert message.requires_response == True
+        assert message.requires_response
         assert "text" in message.content
         assert "_protocol_version" in message.content
         assert "_created_at" in message.content
@@ -97,13 +98,13 @@ class TestMessageProtocol:
         assert response_message.sender_id == original_message.recipient_id
         assert response_message.recipient_id == original_message.sender_id
         assert response_message.priority == original_message.priority
-        assert response_message.requires_response == False
+        assert not response_message.requires_response
         
         # Verify response content
         assert response_message.content["response"] == "I can help"
-        assert response_message.content["accepted"] == True
+        assert response_message.content["accepted"]
         assert response_message.content["_response_to"] == original_message.message_id
-        assert response_message.content["_success"] == True
+        assert response_message.content["_success"]
     
     def test_create_broadcast_message(self):
         """Test creating broadcast messages."""
@@ -120,7 +121,7 @@ class TestMessageProtocol:
         assert broadcast_message.recipient_id == "BROADCAST"
         assert broadcast_message.message_type == MessageType.STATUS_UPDATE
         assert broadcast_message.priority == MessagePriority.HIGH.value
-        assert broadcast_message.content["_broadcast"] == True
+        assert broadcast_message.content["_broadcast"]
         assert "announcement" in broadcast_message.content
     
     def test_create_error_response(self):
@@ -142,10 +143,10 @@ class TestMessageProtocol:
         
         assert error_response.sender_id == original_message.recipient_id
         assert error_response.recipient_id == original_message.sender_id
-        assert error_response.content["error"] == True
+        assert error_response.content["error"]
         assert error_response.content["error_message"] == "Task not found"
         assert error_response.content["error_code"] == "TASK_NOT_FOUND"
-        assert error_response.content["_success"] == False
+        assert not error_response.content["_success"]
     
     def test_message_validation(self):
         """Test message validation."""
@@ -157,7 +158,7 @@ class TestMessageProtocol:
             content={"text": "Valid message"}
         )
         
-        assert self.protocol.validate_message_integrity(valid_message) == True
+        assert self.protocol.validate_message_integrity(valid_message)
         
         # Test with expired message
         expired_message = self.protocol.create_message(
@@ -168,7 +169,7 @@ class TestMessageProtocol:
             expires_at=datetime.now() - timedelta(hours=1)
         )
         
-        assert self.protocol.validate_message_integrity(expired_message) == False
+        assert not self.protocol.validate_message_integrity(expired_message)
     
     def test_correlation_id_handling(self):
         """Test correlation ID extraction and handling."""
@@ -214,8 +215,8 @@ class TestMessageProtocol:
         )
         
         # Test detection
-        assert self.protocol.is_response_message(original) == False
-        assert self.protocol.is_response_message(response) == True
+        assert not self.protocol.is_response_message(original)
+        assert self.protocol.is_response_message(response)
         
         # Test response-to ID extraction
         assert self.protocol.get_response_to_id(original) is None
@@ -277,7 +278,7 @@ class TestMessageQueue:
         
         # Enqueue
         success = self.queue.enqueue_message(message)
-        assert success == True
+        assert success
         
         # Check stats
         stats = self.queue.get_queue_stats()
@@ -306,7 +307,7 @@ class TestMessageQueue:
                 content={"text": f"Message {i}"}
             )
             success = self.queue.enqueue_message(message)
-            assert success == True
+            assert success
         
         # Try to add one more (should fail)
         overflow_message = self.protocol.create_message(
@@ -316,7 +317,7 @@ class TestMessageQueue:
             content={"text": "Overflow message"}
         )
         success = self.queue.enqueue_message(overflow_message)
-        assert success == False
+        assert not success
     
     def test_message_delivery_tracking(self):
         """Test message delivery status tracking."""
@@ -332,7 +333,7 @@ class TestMessageQueue:
         
         # Mark as delivered
         success = self.queue.mark_message_delivered(message.message_id)
-        assert success == True
+        assert success
         
         # Should be removed from pending
         stats = self.queue.get_queue_stats()
@@ -352,7 +353,7 @@ class TestMessageQueue:
         
         # Mark as failed
         success = self.queue.mark_message_failed(message.message_id, "Network error")
-        assert success == True
+        assert success
         
         # Should be in failed queue
         stats = self.queue.get_queue_stats()
@@ -361,7 +362,7 @@ class TestMessageQueue:
         
         # Retry message
         retry_success = self.queue.retry_message(message.message_id)
-        assert retry_success == True
+        assert retry_success
         
         # Should be back in pending queue
         stats = self.queue.get_queue_stats()
@@ -393,7 +394,7 @@ class TestMessageQueue:
         
         # Try to retry again (should fail - limit exceeded)
         retry_success = self.queue.retry_message(message.message_id)
-        assert retry_success == False
+        assert not retry_success
         
         # Should remain in failed queue
         stats = self.queue.get_queue_stats()
@@ -458,13 +459,13 @@ class TestNetworkManager:
         # Start network manager
         await self.network_manager.start()
         
-        assert self.network_manager.is_running == True
+        assert self.network_manager.is_running
         assert self.network_manager.server is not None
         
         # Stop network manager
         await self.network_manager.stop()
         
-        assert self.network_manager.is_running == False
+        assert not self.network_manager.is_running
     
     async def test_add_and_remove_peer(self):
         """Test adding and removing peers."""
@@ -472,18 +473,18 @@ class TestNetworkManager:
         
         # Add peer
         success = await self.network_manager.add_peer(peer_id, "localhost", 9000)
-        assert success == True
+        assert success
         assert peer_id in self.network_manager.known_peers
         
         # Remove peer
         success = await self.network_manager.remove_peer(peer_id)
-        assert success == True
+        assert success
         assert peer_id not in self.network_manager.known_peers
     
     async def test_cannot_add_self_as_peer(self):
         """Test that agent cannot add itself as peer."""
         success = await self.network_manager.add_peer(self.agent_id, "localhost", 9000)
-        assert success == False
+        assert not success
     
     async def test_get_connection_status(self):
         """Test getting connection status."""
@@ -519,7 +520,7 @@ class TestMessageRouter:
         """Set up test environment."""
         from autonomous_ai_ecosystem.core.config import NetworkConfig
         from autonomous_ai_ecosystem.communication.network_manager import NetworkManager
-        from autonomous_ai_ecosystem.communication.message_router import MessageRouter, RoutingStrategy
+        from autonomous_ai_ecosystem.communication.message_router import MessageRouter
         from autonomous_ai_ecosystem.utils.generators import generate_agent_id
         
         self.config = NetworkConfig()
@@ -547,7 +548,7 @@ class TestMessageRouter:
         )
         
         # Route message (will fail since no connection, but should not raise exception)
-        success = await self.message_router.route_message(message, RoutingStrategy.DIRECT)
+        await self.message_router.route_message(message, RoutingStrategy.DIRECT)
         
         # Should track the message even if delivery fails
         assert message.message_id in self.message_router.pending_deliveries

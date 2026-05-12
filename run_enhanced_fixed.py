@@ -5,11 +5,10 @@ This version includes more features while avoiding syntax issues.
 """
 
 import asyncio
-import sys
 import random
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List
 
 from autonomous_ai_ecosystem.core.config import Config
 from autonomous_ai_ecosystem.core.logger import setup_logger
@@ -130,7 +129,7 @@ class EnhancedAgent:
     async def _social_interaction(self, other_agents: List['EnhancedAgent']):
         """Simulate social interaction with other agents."""
         if not other_agents:
-            self.logger.info(f"   Looking for others to interact with...")
+            self.logger.info("   Looking for others to interact with...")
             return
         
         # Choose another agent to interact with
@@ -221,11 +220,11 @@ class EnhancedAgent:
         success = random.random() > 0.3  # 70% success rate
         
         if success:
-            self.logger.info(f"   Achieved excellent results!")
+            self.logger.info("   Achieved excellent results!")
             self.emotional_state["motivation"] = min(1.0, self.emotional_state.get("motivation", 0.5) + 0.2)
             self.status_points += 5
         else:
-            self.logger.info(f"   Results were disappointing, but learning from the experience")
+            self.logger.info("   Results were disappointing, but learning from the experience")
             self.emotional_state["motivation"] = max(0.0, self.emotional_state.get("motivation", 0.5) - 0.1)
     
     def _update_emotions(self):
@@ -324,7 +323,7 @@ async def main():
         
         # Agent rankings
         agents_by_status = sorted(agents, key=lambda a: a.status_points, reverse=True)
-        print(f"\nAgent Rankings by Status:")
+        print("\nAgent Rankings by Status:")
         for i, agent in enumerate(agents_by_status, 1):
             print(f"  {i}. {agent.identity.name}: {agent.status_points} points")
         

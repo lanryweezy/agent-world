@@ -4,8 +4,6 @@ Tests for the virtual currency system.
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
 
 from autonomous_ai_ecosystem.economy.currency import (
     VirtualCurrency,

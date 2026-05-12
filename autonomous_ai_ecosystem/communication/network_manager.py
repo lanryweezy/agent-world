@@ -6,18 +6,16 @@ heartbeat mechanisms, and message routing for the agent ecosystem.
 """
 
 import asyncio
-import socket
 import json
-import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Tuple, Callable, Any
+from datetime import datetime
+from typing import Dict, Optional, Tuple, Callable, Any
 from dataclasses import dataclass
 from enum import Enum
 
 from ..core.interfaces import AgentMessage, CommunicationProtocol
 from ..core.logger import get_agent_logger, log_agent_event
 from ..core.config import NetworkConfig
-from .protocol import MessageProtocol, MessageQueue
+from .protocol import MessageProtocol, MessageType, MessageQueue
 
 
 class ConnectionStatus(Enum):

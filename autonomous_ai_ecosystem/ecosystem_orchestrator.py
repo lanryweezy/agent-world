@@ -10,13 +10,12 @@ import json
 import signal
 import sys
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 import uuid
 
 from .core.interfaces import AgentModule
 from .core.logger import get_agent_logger, log_agent_event
-from .core.config import DatabaseConfig, LLMConfig, NetworkConfig
 from .core.identity_manager import IdentityManager
 from .core.state_manager import StateManager
 
@@ -25,6 +24,12 @@ from .safety.safety_validator import ComprehensiveSafetyValidator
 from .safety.emergency_response import EmergencyResponseSystem
 from .orchestration.agent_manager import AgentManager
 from .orchestration.distributed_coordinator import DistributedCoordinator
+from .communication.message_router import MessageRouter
+from .services.capability_registry import ServiceCapabilityRegistry
+from .services.quality_feedback_system import ServiceQualityFeedbackSystem
+from .oversight.command_router import CommandRouter
+from .oversight.task_delegator import TaskDelegator
+from .oversight.monitoring_reporting import MonitoringReporting
 
 
 @dataclass

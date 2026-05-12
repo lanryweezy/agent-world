@@ -7,14 +7,12 @@ web scraping, content analysis, source validation, and report generation.
 
 import asyncio
 import aiohttp
-import json
 import re
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set, Tuple
+from datetime import datetime
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
-import uuid
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 import hashlib
 
 from ..core.interfaces import AgentModule

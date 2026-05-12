@@ -5,7 +5,7 @@ Tests for the service marketplace system.
 import pytest
 import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, AsyncMock
 
 from autonomous_ai_ecosystem.economy.marketplace import (
     ServiceMarketplace,
@@ -16,8 +16,7 @@ from autonomous_ai_ecosystem.economy.marketplace import (
     ServiceCategory,
     ServiceStatus,
     ContractStatus,
-    QualityRating,
-    MarketplaceTransaction
+    QualityRating
 )
 from autonomous_ai_ecosystem.economy.currency import VirtualCurrency, CurrencyType
 

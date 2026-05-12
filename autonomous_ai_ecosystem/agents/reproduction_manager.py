@@ -5,19 +5,16 @@ This module implements compatibility assessment, reproduction motivation,
 and decision-making for agent reproduction and child-rearing behavior.
 """
 
-import asyncio
-import random
-import math
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Set
+from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from ..core.interfaces import AgentModule, AgentIdentity
+from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 from .genetics import GeneticAlgorithm, GeneticProfile, ReproductionParameters
-from .social_manager import SocialManager, RelationshipType
-from .status_manager import StatusManager, StatusRank
+from .social_manager import SocialManager
+from .status_manager import StatusManager
 from .emotions import EmotionEngine
 
 
@@ -771,7 +768,6 @@ class ReproductionManager(AgentModule):
             requirements["min_genetic_fitness"] = max(0.3, genetic_profile.genetic_fitness - 0.2)
             
             # Personality compatibility
-            personality = genetic_profile.personality_genes
             requirements["personality_preferences"] = {
                 "complementary_traits": ["openness", "agreeableness"],
                 "similar_traits": ["conscientiousness"],
@@ -867,7 +863,7 @@ class ReproductionManager(AgentModule):
             
             if recent_plans:
                 # Find most recent
-                most_recent = max(recent_plans, key=lambda p: datetime.fromisoformat(p.milestone_tracking.get("last_assessment", "2000-01-01T00:00:00")))
+                max(recent_plans, key=lambda p: datetime.fromisoformat(p.milestone_tracking.get("last_assessment", "2000-01-01T00:00:00")))
                 return datetime.now() + timedelta(hours=self.reproduction_config["max_reproduction_frequency"])
             
             return None
@@ -973,7 +969,7 @@ class ReproductionManager(AgentModule):
                 return False
             
             # Create child-rearing plan
-            child_rearing_plan = await self.create_child_rearing_plan(
+            await self.create_child_rearing_plan(
                 offspring_result.offspring_identity.agent_id,
                 proposal.proposer_id,
                 proposal.target_id

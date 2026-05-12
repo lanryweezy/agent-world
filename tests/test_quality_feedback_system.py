@@ -3,9 +3,8 @@ Unit tests for the service quality and feedback system.
 """
 
 import pytest
-import asyncio
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from autonomous_ai_ecosystem.services.quality_feedback_system import (
     ServiceQualityFeedbackSystem,

@@ -6,17 +6,12 @@ of agent activities, system status, and human intervention controls.
 """
 
 import asyncio
-import json
-import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Set
-from dataclasses import dataclass, field
-from enum import Enum
-import uuid
+from datetime import datetime
+from typing import Dict, Optional, Any, Set
+from dataclasses import dataclass
 
 try:
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-    from fastapi.staticfiles import StaticFiles
     from fastapi.responses import HTMLResponse, JSONResponse
     from fastapi.middleware.cors import CORSMiddleware
     import uvicorn
@@ -25,7 +20,7 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 from ..core.interfaces import AgentModule
-from ..core.logger import get_agent_logger, log_agent_event
+from ..core.logger import get_agent_logger
 
 
 @dataclass
@@ -131,7 +126,7 @@ class EcosystemDashboard(AgentModule):
             for websocket in self.websocket_connections.copy():
                 try:
                     await websocket.close()
-                except:
+                except Exception:
                     pass
             
             self.logger.info("Dashboard shutdown completed")

@@ -4,8 +4,6 @@ Tests for the virtual world environment system.
 
 import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch
 
 from autonomous_ai_ecosystem.world.virtual_world import (
     VirtualWorld,
@@ -15,7 +13,6 @@ from autonomous_ai_ecosystem.world.virtual_world import (
     ResourceType,
     ActivityType,
     Coordinates,
-    AgentPosition,
     WorldEvent
 )
 

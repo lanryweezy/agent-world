@@ -8,7 +8,7 @@ validating code safety, and detecting potential security vulnerabilities.
 import ast
 import re
 import keyword
-from typing import List, Dict, Set, Optional, Any, Tuple
+from typing import List, Dict, Tuple
 from enum import Enum
 import hashlib
 

@@ -4,20 +4,18 @@ Unit tests for emergency response and shutdown systems.
 
 import pytest
 import pytest_asyncio
-import asyncio
 import os
 import tempfile
 import shutil
 from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock
 
 from autonomous_ai_ecosystem.safety.emergency_response import (
     EmergencyResponseSystem,
     EmergencyLevel,
     ShutdownReason,
     RecoveryStrategy,
-    EmergencyIncident,
-    SystemBackup
+    EmergencyIncident
 )
 
 
