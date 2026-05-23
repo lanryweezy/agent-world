@@ -120,6 +120,10 @@ class EcosystemOrchestrator:
         self.task_delegator: Optional[TaskDelegator] = None
         self.monitoring_reporting: Optional[MonitoringReporting] = None
         
+        # Evolution systems
+        self.evolution_orchestrator: Optional[Any] = None
+        self.cognition_base: Optional[Any] = None
+
         # Runtime state
         self.is_running = False
         self.startup_time: Optional[datetime] = None
@@ -532,6 +536,44 @@ class EcosystemOrchestrator:
     
     async def _initialize_optional_systems(self) -> None:
         """Initialize optional systems based on configuration."""
+        # Evolution system (ASI-EVOLVE)
+        try:
+            from .knowledge.cognition_base import CognitionBase
+            from .agents.analyzer import StructuredAnalyzer
+            from .learning.evolution_orchestrator import EvolutionOrchestrator
+            from .agents.code_analyzer import CodeAnalyzer
+            from .agents.code_modifier import CodeModifier
+            from .agents.sandbox import CodeSandbox
+            from .agents.brain import AIBrain
+            from .core.config import LLMConfig
+
+            self.logger.info("Initializing Evolution System (ASI-EVOLVE)...")
+
+            # Setup necessary components for evolution
+            code_analyzer = CodeAnalyzer("evolution_agent")
+            llm_config = LLMConfig(provider=self.config.llm["provider"], model=self.config.llm["model"], api_key=self.config.llm["api_key"])
+            brain = AIBrain("evolution_agent", llm_config, personality_traits={"openness": 0.9, "conscientiousness": 0.8})
+            await brain.initialize()
+
+            code_modifier = CodeModifier("evolution_agent", code_analyzer, brain)
+            sandbox = CodeSandbox("evolution_agent", code_analyzer)
+            await sandbox.initialize()
+
+            analyzer = StructuredAnalyzer("evolution_agent", brain)
+            self.cognition_base = CognitionBase("evolution_agent")
+
+            self.evolution_orchestrator = EvolutionOrchestrator(
+                "evolution_orchestrator",
+                code_modifier,
+                sandbox,
+                analyzer,
+                self.cognition_base
+            )
+            await self._initialize_system("evolution_orchestrator", self.evolution_orchestrator)
+
+        except Exception as e:
+            self.logger.warning(f"Failed to initialize evolution system: {e}")
+
         # Web browsing and learning
         if self.config.enable_web_browsing:
             try:
