@@ -9,6 +9,7 @@ from autonomous_ai_ecosystem.learning.evolution_orchestrator import EvolutionOrc
 from autonomous_ai_ecosystem.agents.code_modifier import CodeModifier
 from autonomous_ai_ecosystem.agents.sandbox import CodeSandbox, ExecutionResult, ExecutionStatus
 from autonomous_ai_ecosystem.agents.analyzer import StructuredAnalyzer
+from autonomous_ai_ecosystem.agents.reviewer import CritiqueReviewer
 from autonomous_ai_ecosystem.knowledge.cognition_base import CognitionBase
 from autonomous_ai_ecosystem.agents.brain import ThoughtProcess, ThoughtType
 
@@ -40,6 +41,16 @@ async def test_evolution_cycle():
         "confidence": 0.9
     })
 
+    reviewer = MagicMock(spec=CritiqueReviewer)
+    reviewer.review_design = AsyncMock(return_value={
+        "score": 0.8,
+        "critique": "Looks good",
+        "risks": [],
+        "suggestions": [],
+        "should_proceed": True,
+        "confidence": 0.9
+    })
+
     cognition_base = MagicMock(spec=CognitionBase)
     cognition_base.initialize = AsyncMock()
     cognition_base.retrieve_relevant = AsyncMock(return_value=[{"content": "Prior knowledge"}])
@@ -49,6 +60,7 @@ async def test_evolution_cycle():
         code_modifier,
         sandbox,
         analyzer,
+        reviewer,
         cognition_base
     )
 
@@ -69,4 +81,4 @@ async def test_evolution_cycle():
     code_modifier.apply_modification.assert_called_once_with("test_mod_1")
 
     assert orchestrator.evolution_rounds == 1
-    assert len(orchestrator.historical_experience) == 1
+    assert len(orchestrator.database) == 1
