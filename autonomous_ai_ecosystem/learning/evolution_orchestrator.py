@@ -69,6 +69,9 @@ class EvolutionOrchestrator(AgentModule):
         self.islands: List[List[EvolutionNode]] = [[] for _ in range(5)]
         self.current_island_index = 0
 
+        # Human-in-the-Loop constraints/feedback
+        self.hitl_feedback: Dict[int, str] = {} # island_index -> feedback string
+
     async def initialize(self):
         """Initialize the evolution orchestrator."""
         self.logger.info("Initializing Evolution Orchestrator...")
@@ -103,6 +106,11 @@ class EvolutionOrchestrator(AgentModule):
         self.is_evolving = False
         self.logger.info("Evolution loop finished.")
 
+    def inject_hitl_feedback(self, island_index: int, feedback: str):
+        """Allow humans to steer a specific evolution island."""
+        self.hitl_feedback[island_index] = feedback
+        self.logger.info(f"Injected human steering into Island {island_index}: {feedback[:50]}...")
+
     async def _execute_evolution_round(self, target_file: str, task_description: str) -> Optional[EvolutionNode]:
             """Execute a single evolution round (LDEA cycle)."""
             self.evolution_rounds += 1
@@ -122,10 +130,16 @@ class EvolutionOrchestrator(AgentModule):
 
             cognition = await self.cognition_base.retrieve_relevant(task_description)
 
+            # HITL Steering: Combine task with human feedback if available
+            steering_context = self.hitl_feedback.get(self.current_island_index, "")
+            effective_task = task_description
+            if steering_context:
+                effective_task += f"\n[HUMAN STEERING]: {steering_context}"
+
             # 2. DESIGN: Researcher proposes a modification
             design_result = await self.researcher.design_modification(
                 target_file=target_file,
-                task_description=task_description,
+                task_description=effective_task,
                 cognition_context=cognition,
                 historical_experience=historical_context
             )

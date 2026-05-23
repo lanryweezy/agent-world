@@ -49,3 +49,22 @@ class CognitionInitializer:
         ]
         for content, cat in priors:
             await cognition_base.add_knowledge(content, source="Initial Seed", category=cat, tags=["rl", "algorithm", "grpo"])
+
+    @staticmethod
+    async def seed_biomedical_dti(cognition_base: CognitionBase):
+        """Seed knowledge for biomedical Drug-Target Interaction (DTI) discovery."""
+        priors = [
+            ("Sinkhorn Attention enforces doubly-stochastic constraints, preventing attention collapse in binding models.", "Biomed Prior"),
+            ("Domain-specific marginalization aggregates interaction patterns across molecular substructures and protein domains.", "Design Principle"),
+            ("Top-k Sparse Gating dynamically focuses on the most relevant molecular interaction patterns.", "Methodology"),
+            ("Optimal transport theory has strong theoretical connections to molecular binding affinity.", "Scientific Foundation"),
+            ("Graph Neural Networks (GNNs) are highly effective for modality-specific representations of drugs.", "Architecture Prior")
+        ]
+        for content, cat in priors:
+            await cognition_base.add_knowledge(
+                content,
+                source="Initial Seed (ASI-EVOLVE Paper)",
+                category=cat,
+                tags=["biomedical", "dti", "sinkhorn", "drug-discovery"],
+                visual_description="Bipartite graph matching diagram between drug nodes and protein domain nodes."
+            )
