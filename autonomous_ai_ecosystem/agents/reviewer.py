@@ -12,7 +12,7 @@ from ..core.logger import get_agent_logger
 class CritiqueReviewer:
     """
     Expert reviewer that identifies potential flaws, security issues,
-    or optimization opportunities in proposed code designs.
+    or optimization opportunities in proposed code designs. Supports Peer Discussion.
     """
 
     def __init__(self, agent_id: str, brain: AIBrain):
@@ -24,7 +24,8 @@ class CritiqueReviewer:
         self,
         proposed_code: str,
         motivation: str,
-        task_description: str
+        task_description: str,
+        enable_discussion: bool = True
     ) -> Dict[str, Any]:
         """
         Review a proposed code design and provide a score and feedback.
@@ -74,7 +75,51 @@ Format your response as JSON.
         )
 
         review = thought.output
-        self.logger.info(f"Review completed. Safe to proceed: {review.get('should_proceed', False)}")
+
+        if enable_discussion and review.get("score", 0.0) < 0.9:
+            # Perform "Peer Discussion" (Self-Correction loop)
+            self.logger.info("Initiating peer discussion for closer inspection...")
+            discussion_input = {
+                "initial_review": review,
+                "proposed_code": proposed_code,
+                "task_description": task_description
+            }
+
+            discussion_template = "peer_discussion"
+            if discussion_template not in self.brain.prompt_templates:
+                from .brain import PromptTemplate
+                self.brain.prompt_templates[discussion_template] = PromptTemplate(
+                    template_id=discussion_template,
+                    name="Research Peer Discussion",
+                    template="""
+You are participating in a peer discussion about a code proposal.
+
+Initial Review:
+{initial_review}
+
+Proposed Code:
+{proposed_code}
+
+Task: {task_description}
+
+Please debate the initial review points. Are they too harsh? Did they miss a subtle bug?
+Produce a FINAL consensus review with the same JSON keys: score, critique, risks, improvement_suggestions, should_proceed.
+""",
+                    variables=["initial_review", "proposed_code", "task_description"],
+                    thought_type=ThoughtType.ANALYSIS,
+                    max_tokens=2000,
+                    temperature=0.5
+                )
+
+            consensus_thought = await self.brain.think(
+                thought_type=ThoughtType.ANALYSIS,
+                input_data=discussion_input,
+                template_id=discussion_template
+            )
+            review = consensus_thought.output
+            self.logger.info("Peer discussion reached consensus.")
+
+        self.logger.info(f"Final Review completed. Safe to proceed: {review.get('should_proceed', False)}")
 
         return {
             "score": review.get("score", 0.0),

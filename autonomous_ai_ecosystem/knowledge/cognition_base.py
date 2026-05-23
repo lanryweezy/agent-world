@@ -33,8 +33,8 @@ class CognitionBase:
         self.logger.info("Initializing Cognition Base...")
         await self.load_data()
 
-    async def add_knowledge(self, content: str, source: str, category: str, tags: List[str] = None):
-        """Add a new piece of knowledge to the cognition base."""
+    async def add_knowledge(self, content: str, source: str, category: str, tags: List[str] = None, enable_domain_transfer: bool = True):
+        """Add a new piece of knowledge to the cognition base. Supports domain transfer logic."""
         item = {
             "content": content,
             "source": source,
@@ -42,10 +42,25 @@ class CognitionBase:
             "tags": tags or [],
             "timestamp": datetime.now().isoformat()
         }
+
+        if enable_domain_transfer:
+            # Simple Domain Transfer: automatically add related domain tags
+            transfer_rules = {
+                "linear-attention": ["drug-target-interaction", "sequence-modeling"],
+                "sinkhorn": ["optimal-transport", "binding-affinity"],
+                "grpo": ["reasoning-reinforcement", "stability"],
+                "data-curation": ["knowledge-intensive-tasks"]
+            }
+            new_tags = set(item["tags"])
+            for key, related in transfer_rules.items():
+                if key in content.lower() or any(key in t.lower() for t in item["tags"]):
+                    new_tags.update(related)
+            item["tags"] = list(new_tags)
+
         self.vector_memory.add_document(content)
         self.metadata.append(item)
         await self.save_data()
-        self.logger.info(f"Added knowledge from {source} to category {category}")
+        self.logger.info(f"Added knowledge from {source} to category {category}. Tags: {item['tags']}")
 
     async def retrieve_relevant(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
         """Retrieve relevant knowledge items based on a query."""
