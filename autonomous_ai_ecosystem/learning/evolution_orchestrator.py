@@ -75,25 +75,40 @@ class EvolutionOrchestrator(AgentModule):
         self.analyzer.register_template()
         await self.cognition_base.initialize()
 
-    async def start_evolution(self, target_file: str, task_description: str, max_rounds: int = 5):
-        """Start the evolution loop."""
+    async def start_evolution(self, target_file: str, task_description: str, max_rounds: int = 5, parallelism: int = 3):
+        """Start the evolution loop with distributed experimentation support."""
         self.is_evolving = True
-        self.logger.info(f"Starting evolution loop for {target_file} using {self.sampling_strategy} across {len(self.islands)} islands...")
+        self.logger.info(f"Starting evolution loop for {target_file} using {self.sampling_strategy} (Parallelism: {parallelism})...")
 
-        for r in range(max_rounds):
-            # Rotate current island
-            self.current_island_index = r % len(self.islands)
-            current_island = self.islands[self.current_island_index]
-            self.logger.info(f"--- Evolution Round {self.evolution_rounds + 1} (Island {self.current_island_index}) ---")
-
-            # Periodic Migration between islands
-            if r > 0 and r % 10 == 0:
-                self._perform_migration()
+        for r in range(0, max_rounds, parallelism):
             if not self.is_evolving:
                 break
 
+            # Rotation and Migration
+            self.current_island_index = (r // parallelism) % len(self.islands)
+            if r > 0 and r % 10 == 0:
+                self._perform_migration()
+
+            # Parallel Step Execution
+            tasks = []
+            for p in range(parallelism):
+                if r + p >= max_rounds:
+                    break
+                tasks.append(self._execute_evolution_round(target_file, task_description))
+
+            # Execute batch of rounds concurrently
+            results = await asyncio.gather(*tasks)
+            self.logger.info(f"Batch of {len(results)} rounds completed.")
+
+        self.is_evolving = False
+        self.logger.info("Evolution loop finished.")
+
+    async def _execute_evolution_round(self, target_file: str, task_description: str) -> Optional[EvolutionNode]:
+            """Execute a single evolution round (LDEA cycle)."""
             self.evolution_rounds += 1
-            self.logger.info(f"--- Evolution Round {self.evolution_rounds} ---")
+            round_id = self.evolution_rounds
+            current_island = self.islands[self.current_island_index]
+            self.logger.info(f"--- Evolution Round {round_id} (Island {self.current_island_index}) ---")
 
             # 1. LEARN: Sample parent nodes and retrieve cognition
             parent_nodes = self._sample_parents(count=3)
@@ -123,8 +138,8 @@ class EvolutionOrchestrator(AgentModule):
             )
 
             if not review_result.get("should_proceed", False):
-                self.logger.warning(f"Round {self.evolution_rounds} BLOCKED by reviewer. Reason: {review_result.get('critique')}")
-                continue
+                self.logger.warning(f"Round {round_id} BLOCKED by reviewer. Reason: {review_result.get('critique')}")
+                return None
 
             # 3. EXPERIMENT: Engineer tests in sandbox
             test_results = await self.engineer.execute_code(
@@ -135,7 +150,7 @@ class EvolutionOrchestrator(AgentModule):
             analysis = await self.analyzer.analyze_experiment(
                 program_code=design_result["proposed_code"],
                 execution_result=test_results.__dict__,
-                context={"round": self.evolution_rounds, "task": task_description}
+                context={"round": round_id, "task": task_description}
             )
 
             # Calculate fitness score (0.0 to 1.0)
@@ -146,7 +161,7 @@ class EvolutionOrchestrator(AgentModule):
 
             # Store in database and current island
             node = EvolutionNode(
-                node_id=f"node_{self.evolution_rounds}",
+                node_id=f"node_{round_id}",
                 motivation=design_result["motivation"],
                 code=design_result["proposed_code"],
                 execution_result=test_results.__dict__,
@@ -166,31 +181,29 @@ class EvolutionOrchestrator(AgentModule):
             for lesson in analysis.get("lessons_learned", []):
                 await self.cognition_base.add_knowledge(
                     content=lesson,
-                    source=f"evolution_round_{self.evolution_rounds}",
+                    source=f"evolution_round_{round_id}",
                     category="experimental_lesson",
                     tags=[task_description, "lesson"]
                 )
 
             # Apply if successful and high score
             if score > 0.8:
-                self.logger.info(f"Round {self.evolution_rounds} SUCCESS (Score: {score:.2f}). Applying modification.")
+                self.logger.info(f"Round {round_id} SUCCESS (Score: {score:.2f}). Applying modification.")
                 await self.researcher.apply_modification(design_result["modification_id"])
             else:
-                self.logger.warning(f"Round {self.evolution_rounds} sub-optimal (Score: {score:.2f}). Skipping application.")
+                self.logger.warning(f"Round {round_id} sub-optimal (Score: {score:.2f}). Skipping application.")
 
             log_agent_event(
                 self.agent_id,
                 "evolution_round_completed",
                 {
-                    "round": self.evolution_rounds,
+                    "round": round_id,
                     "status": test_results.status.value,
                     "score": score,
                     "confidence": analysis["confidence"]
                 }
             )
-
-        self.is_evolving = False
-        self.logger.info("Evolution loop finished.")
+            return node
 
     def _sample_parents(self, count: int = 3) -> List[EvolutionNode]:
         """Sample parent nodes using chosen strategy, prioritizing current island."""
