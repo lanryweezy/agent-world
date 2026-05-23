@@ -33,14 +33,15 @@ class CognitionBase:
         self.logger.info("Initializing Cognition Base...")
         await self.load_data()
 
-    async def add_knowledge(self, content: str, source: str, category: str, tags: List[str] = None, enable_domain_transfer: bool = True):
-        """Add a new piece of knowledge to the cognition base. Supports domain transfer logic."""
+    async def add_knowledge(self, content: str, source: str, category: str, tags: List[str] = None, enable_domain_transfer: bool = True, visual_description: Optional[str] = None):
+        """Add a new piece of knowledge to the cognition base. Supports multi-modal and domain transfer logic."""
         item = {
             "content": content,
             "source": source,
             "category": category,
             "tags": tags or [],
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
+            "visual_description": visual_description # For diagrams/architectures
         }
 
         if enable_domain_transfer:
@@ -57,7 +58,12 @@ class CognitionBase:
                     new_tags.update(related)
             item["tags"] = list(new_tags)
 
-        self.vector_memory.add_document(content)
+        # Index both textual content and visual description
+        index_text = content
+        if visual_description:
+            index_text += f" [Visual: {visual_description}]"
+
+        self.vector_memory.add_document(index_text)
         self.metadata.append(item)
         await self.save_data()
         self.logger.info(f"Added knowledge from {source} to category {category}. Tags: {item['tags']}")

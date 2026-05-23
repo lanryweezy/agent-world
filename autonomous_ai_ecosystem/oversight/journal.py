@@ -6,6 +6,7 @@ professional research reports (Markdown/HTML).
 """
 
 import os
+import json
 from typing import List, Dict, Any
 from datetime import datetime
 from ..core.interfaces import AgentModule
@@ -43,7 +44,31 @@ class ResearchJournal(AgentModule):
             f.write(report_content)
 
         self.logger.info(f"Published research report: {file_path}")
+
+        # Export as Standardized Research Object (JSON-LD)
+        await self.export_as_research_object(task_name, final_node, report_id)
+
         return file_path
+
+    async def export_as_research_object(self, task_name: str, final_node: Any, report_id: str):
+        """Export the discovery as a machine-readable Research Object."""
+        ro = {
+            "@context": "https://schema.org",
+            "@type": "ScholarlyArticle",
+            "name": task_name,
+            "description": final_node.motivation,
+            "datePublished": datetime.now().isoformat(),
+            "author": {"@type": "SoftwareApplication", "name": self.agent_id},
+            "articleBody": final_node.analysis.get("analysis", ""),
+            "keywords": final_node.analysis.get("insights", []),
+            "identifier": report_id,
+            "softwareSourceCode": final_node.code
+        }
+
+        ro_path = os.path.join(self.storage_path, f"{report_id}.jsonld")
+        with open(ro_path, "w") as f:
+            json.dump(ro, f, indent=4)
+        self.logger.info(f"Exported discovery as Research Object: {ro_path}")
 
     def _generate_markdown(self, task_name: str, history: List[Dict[str, Any]], final_node: Any) -> str:
         """Generate the Markdown content for the report."""
