@@ -566,11 +566,11 @@ class EcosystemOrchestrator:
 
             self.evolution_orchestrator = EvolutionOrchestrator(
                 "evolution_orchestrator",
-                code_modifier,
-                sandbox,
-                analyzer,
-                reviewer,
-                self.cognition_base
+                researcher=code_modifier,
+                engineer=sandbox,
+                analyzer=analyzer,
+                reviewer=reviewer,
+                cognition_base=self.cognition_base
             )
             await self._initialize_system("evolution_orchestrator", self.evolution_orchestrator)
 

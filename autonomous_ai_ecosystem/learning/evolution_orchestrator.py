@@ -34,22 +34,22 @@ class EvolutionNode:
 
 class EvolutionOrchestrator(AgentModule):
     """
-    Orchestrates the end-to-end evolution loop with advanced sampling (UCB1, MAP-Elites).
+    Orchestrates the end-to-end evolution loop using a Multi-Agent Research Team.
     """
 
     def __init__(
         self,
         agent_id: str,
-        code_modifier: CodeModifier,
-        sandbox: CodeSandbox,
+        researcher: CodeModifier,
+        engineer: CodeSandbox,
         analyzer: StructuredAnalyzer,
         reviewer: CritiqueReviewer,
         cognition_base: CognitionBase,
         sampling_strategy: str = "ucb1" # random, ucb1, map_elites
     ):
         super().__init__(agent_id)
-        self.code_modifier = code_modifier
-        self.sandbox = sandbox
+        self.researcher = researcher
+        self.engineer = engineer
         self.analyzer = analyzer
         self.reviewer = reviewer
         self.cognition_base = cognition_base
@@ -107,15 +107,15 @@ class EvolutionOrchestrator(AgentModule):
 
             cognition = await self.cognition_base.retrieve_relevant(task_description)
 
-            # 2. DESIGN: Propose a modification
-            design_result = await self.code_modifier.design_modification(
+            # 2. DESIGN: Researcher proposes a modification
+            design_result = await self.researcher.design_modification(
                 target_file=target_file,
                 task_description=task_description,
                 cognition_context=cognition,
                 historical_experience=historical_context
             )
 
-            # 2.5 REVIEW: Critique the design before execution
+            # 2.5 REVIEW: Reviewer critiques the design before execution
             review_result = await self.reviewer.review_design(
                 proposed_code=design_result["proposed_code"],
                 motivation=design_result["motivation"],
@@ -126,8 +126,8 @@ class EvolutionOrchestrator(AgentModule):
                 self.logger.warning(f"Round {self.evolution_rounds} BLOCKED by reviewer. Reason: {review_result.get('critique')}")
                 continue
 
-            # 3. EXPERIMENT: Test in sandbox
-            test_results = await self.sandbox.execute_code(
+            # 3. EXPERIMENT: Engineer tests in sandbox
+            test_results = await self.engineer.execute_code(
                 code=design_result["proposed_code"]
             )
 
@@ -174,7 +174,7 @@ class EvolutionOrchestrator(AgentModule):
             # Apply if successful and high score
             if score > 0.8:
                 self.logger.info(f"Round {self.evolution_rounds} SUCCESS (Score: {score:.2f}). Applying modification.")
-                await self.code_modifier.apply_modification(design_result["modification_id"])
+                await self.researcher.apply_modification(design_result["modification_id"])
             else:
                 self.logger.warning(f"Round {self.evolution_rounds} sub-optimal (Score: {score:.2f}). Skipping application.")
 
