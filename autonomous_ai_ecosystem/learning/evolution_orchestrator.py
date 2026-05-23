@@ -8,7 +8,9 @@ continuous autonomous self-improvement of the AI ecosystem.
 import asyncio
 import math
 import random
-from dataclasses import dataclass, field
+import os
+import json
+from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from ..core.interfaces import AgentModule
@@ -17,6 +19,7 @@ from ..agents.code_modifier import CodeModifier
 from ..agents.sandbox import CodeSandbox
 from ..agents.analyzer import StructuredAnalyzer
 from ..agents.reviewer import CritiqueReviewer
+from ..agents.planner import ResearchPlanner
 from ..knowledge.cognition_base import CognitionBase
 
 @dataclass
@@ -40,6 +43,7 @@ class EvolutionOrchestrator(AgentModule):
     def __init__(
         self,
         agent_id: str,
+        planner: ResearchPlanner,
         researcher: CodeModifier,
         engineer: CodeSandbox,
         analyzer: StructuredAnalyzer,
@@ -48,6 +52,7 @@ class EvolutionOrchestrator(AgentModule):
         sampling_strategy: str = "ucb1" # random, ucb1, map_elites
     ):
         super().__init__(agent_id)
+        self.planner = planner
         self.researcher = researcher
         self.engineer = engineer
         self.analyzer = analyzer
@@ -77,6 +82,7 @@ class EvolutionOrchestrator(AgentModule):
         self.logger.info("Initializing Evolution Orchestrator...")
         self.analyzer.register_template()
         await self.cognition_base.initialize()
+        await self.load_state()
 
     async def start_evolution(self, target_file: str, task_description: str, max_rounds: int = 5, parallelism: int = 3):
         """Start the evolution loop with distributed experimentation support."""
@@ -136,10 +142,17 @@ class EvolutionOrchestrator(AgentModule):
             if steering_context:
                 effective_task += f"\n[HUMAN STEERING]: {steering_context}"
 
-            # 2. DESIGN: Researcher proposes a modification
+            # 1.5 PLAN: ResearchPlanner generates a blueprint (PES paradigm)
+            plan = await self.planner.generate_plan(
+                task_description=effective_task,
+                cognition_context=cognition,
+                historical_experience=historical_context
+            )
+
+            # 2. DESIGN: Researcher proposes a modification based on the plan
             design_result = await self.researcher.design_modification(
                 target_file=target_file,
-                task_description=effective_task,
+                task_description=f"{effective_task}\n[STRATEGIC PLAN]: {plan}",
                 cognition_context=cognition,
                 historical_experience=historical_context
             )
@@ -309,8 +322,56 @@ class EvolutionOrchestrator(AgentModule):
         self.is_evolving = False
         self.logger.info("Evolution loop stop requested.")
 
+    async def save_state(self, storage_path: str = "data/evolution/evolution_state.json"):
+        """Save the evolution state to disk."""
+        state = {
+            "evolution_rounds": self.evolution_rounds,
+            "database": [asdict(node) for node in self.database],
+            "map_elites_archive": {f"{k[0]}_{k[1]}": asdict(v) for k, v in self.map_elites_archive.items()},
+            "islands": [[asdict(node) for node in island] for island in self.islands],
+            "sampling_strategy": self.sampling_strategy
+        }
+        # Ensure timestamp and other non-serializable objects are handled
+        def default_serializer(obj):
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            return str(obj)
+
+        with open(storage_path, "w") as f:
+            json.dump(state, f, indent=4, default=default_serializer)
+        self.logger.info(f"Evolution state saved to {storage_path}")
+
+    async def load_state(self, storage_path: str = "data/evolution/evolution_state.json"):
+        """Load the evolution state from disk."""
+        if not os.path.exists(storage_path):
+            return
+
+        with open(storage_path, "r") as f:
+            state = json.load(f)
+
+        self.evolution_rounds = state.get("evolution_rounds", 0)
+        self.sampling_strategy = state.get("sampling_strategy", self.sampling_strategy)
+
+        # Helper to reconstruct nodes
+        def reconstruct_node(d):
+            if isinstance(d["timestamp"], str):
+                d["timestamp"] = datetime.fromisoformat(d["timestamp"])
+            return EvolutionNode(**d)
+
+        self.database = [reconstruct_node(d) for d in state.get("database", [])]
+
+        archive_raw = state.get("map_elites_archive", {})
+        for k, v in archive_raw.items():
+            b1, b2 = map(int, k.split("_"))
+            self.map_elites_archive[(b1, b2)] = reconstruct_node(v)
+
+        self.islands = [[reconstruct_node(d) for d in island] for island in state.get("islands", [])]
+
+        self.logger.info(f"Evolution state loaded from {storage_path}. Rounds: {self.evolution_rounds}")
+
     async def shutdown(self):
         """Shutdown the evolution orchestrator."""
         await self.stop_evolution()
+        await self.save_state()
         await self.cognition_base.save_data()
         self.logger.info("Evolution Orchestrator shutdown.")

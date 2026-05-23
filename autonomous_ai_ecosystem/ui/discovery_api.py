@@ -21,6 +21,7 @@ class DiscoveryAPI(AgentModule):
         self.evolution_orchestrator = evolution_orchestrator
         self.logger = get_agent_logger(agent_id, "discovery_api")
         self.active_tasks = {}
+        self.research_feed = [] # List of recent evolution events
 
     async def initialize(self):
         """Initialize the API."""
@@ -51,6 +52,22 @@ class DiscoveryAPI(AgentModule):
         if task_id not in self.active_tasks:
             return {"error": "Task not found"}
         return self.active_tasks[task_id]
+
+    async def get_realtime_feed(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Retrieve the latest events from the research feed."""
+        # In a real system, this would be a websocket or Server-Sent Events stream
+        return self.research_feed[-limit:]
+
+    def add_to_feed(self, event_type: str, data: Dict[str, Any]):
+        """Add an event to the research feed."""
+        event = {
+            "type": event_type,
+            "data": data,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.research_feed.append(event)
+        if len(self.research_feed) > 100:
+            self.research_feed.pop(0)
 
     async def shutdown(self):
         """Shutdown the API."""

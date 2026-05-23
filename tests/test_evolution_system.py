@@ -10,6 +10,7 @@ from autonomous_ai_ecosystem.agents.code_modifier import CodeModifier
 from autonomous_ai_ecosystem.agents.sandbox import CodeSandbox, ExecutionResult, ExecutionStatus
 from autonomous_ai_ecosystem.agents.analyzer import StructuredAnalyzer
 from autonomous_ai_ecosystem.agents.reviewer import CritiqueReviewer
+from autonomous_ai_ecosystem.agents.planner import ResearchPlanner
 from autonomous_ai_ecosystem.knowledge.cognition_base import CognitionBase
 from autonomous_ai_ecosystem.agents.brain import ThoughtProcess, ThoughtType
 
@@ -51,12 +52,19 @@ async def test_evolution_cycle():
         "confidence": 0.9
     })
 
+    planner = MagicMock(spec=ResearchPlanner)
+    planner.generate_plan = AsyncMock(return_value={
+        "strategic_objective": "Test objective",
+        "proposed_approach": "Test approach"
+    })
+
     cognition_base = MagicMock(spec=CognitionBase)
     cognition_base.initialize = AsyncMock()
     cognition_base.retrieve_relevant = AsyncMock(return_value=[{"content": "Prior knowledge"}])
 
     orchestrator = EvolutionOrchestrator(
         "test_evolve",
+        planner,
         code_modifier,
         sandbox,
         analyzer,

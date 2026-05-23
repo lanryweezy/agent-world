@@ -541,6 +541,7 @@ class EcosystemOrchestrator:
             from .knowledge.cognition_base import CognitionBase
             from .agents.analyzer import StructuredAnalyzer
             from .agents.reviewer import CritiqueReviewer
+            from .agents.planner import ResearchPlanner
             from .learning.evolution_orchestrator import EvolutionOrchestrator
             from .agents.code_analyzer import CodeAnalyzer
             from .agents.code_modifier import CodeModifier
@@ -562,10 +563,12 @@ class EcosystemOrchestrator:
 
             analyzer = StructuredAnalyzer("evolution_agent", brain)
             reviewer = CritiqueReviewer("evolution_agent", brain)
+            planner = ResearchPlanner("evolution_agent", brain)
             self.cognition_base = CognitionBase("evolution_agent")
 
             self.evolution_orchestrator = EvolutionOrchestrator(
                 "evolution_orchestrator",
+                planner=planner,
                 researcher=code_modifier,
                 engineer=sandbox,
                 analyzer=analyzer,
