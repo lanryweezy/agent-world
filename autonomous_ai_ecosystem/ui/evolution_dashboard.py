@@ -9,15 +9,17 @@ from typing import Dict, Any, List
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger
 from ..learning.evolution_orchestrator import EvolutionOrchestrator
+from ..learning.growth_orchestrator import GrowthOrchestrator
 
 class EvolutionDashboard(AgentModule):
     """
     Visualization and oversight dashboard for the ASI-EVOLVE framework.
     """
 
-    def __init__(self, agent_id: str, orchestrator: EvolutionOrchestrator):
+    def __init__(self, agent_id: str, orchestrator: EvolutionOrchestrator, growth_orchestrator: Optional[GrowthOrchestrator] = None):
         super().__init__(agent_id)
         self.orchestrator = orchestrator
+        self.growth_orchestrator = growth_orchestrator
         self.logger = get_agent_logger(agent_id, "evolution_dashboard")
 
     async def initialize(self):
@@ -52,6 +54,18 @@ class EvolutionDashboard(AgentModule):
 
         # Best discoveries with Artifact Inspection
         top_nodes = sorted(orch.database, key=lambda x: x.score, reverse=True)[:5]
+
+        # Growth/Marketing Context
+        growth_data = {}
+        if self.growth_orchestrator:
+             growth_data = {
+                 name: {
+                     "gtm": details.get("gtm_plan"),
+                     "copy": details.get("copy")
+                 }
+                 for name, details in self.growth_orchestrator.commercial_history.items()
+             }
+
         discoveries = [
             {
                 "id": n.node_id,
@@ -73,7 +87,8 @@ class EvolutionDashboard(AgentModule):
             "sampling_strategy": orch.sampling_strategy,
             "map_elites_grid": grid_data,
             "islands_population": island_stats,
-            "top_discoveries": discoveries
+            "top_discoveries": discoveries,
+            "growth_pipeline": growth_data
         }
 
     async def render_cli_view(self):

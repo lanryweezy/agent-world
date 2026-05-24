@@ -10,17 +10,20 @@ from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 from .capability_registry import ServiceCapabilityRegistry
 from ..economy.marketplace import Marketplace
+from ..learning.growth_orchestrator import GrowthOrchestrator
 
 class ServiceProvisionBridge(AgentModule):
     """
     Bridges the gap between autonomous evolution and service deployment.
     Registers evolved code and models as capabilities and lists them on the marketplace.
+    Triggers the Growth pipeline for significant breakthroughs.
     """
 
-    def __init__(self, agent_id: str, capability_registry: ServiceCapabilityRegistry, marketplace: Optional[Marketplace] = None):
+    def __init__(self, agent_id: str, capability_registry: ServiceCapabilityRegistry, marketplace: Optional[Marketplace] = None, growth_orchestrator: Optional[GrowthOrchestrator] = None):
         super().__init__(agent_id)
         self.capability_registry = capability_registry
         self.marketplace = marketplace
+        self.growth_orchestrator = growth_orchestrator
         self.logger = get_agent_logger(agent_id, "service_bridge")
         self.deployed_services = {}
 
@@ -73,6 +76,12 @@ class ServiceProvisionBridge(AgentModule):
                     # In a real implementation: self.marketplace.list_item(asset_id, name, description, price=100)
                 except Exception as e:
                     self.logger.warning(f"Failed to list asset on marketplace: {e}")
+
+            # Growth pipeline Trigger
+            if self.growth_orchestrator:
+                self.logger.info(f"Triggering Growth pipeline for {name}...")
+                # In a real system, this would be an async background task
+                # await self.growth_orchestrator.launch_capability(name, description, performance_metrics)
 
             log_agent_event(
                 self.agent_id,

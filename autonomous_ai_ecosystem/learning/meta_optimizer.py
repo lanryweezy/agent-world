@@ -103,6 +103,61 @@ Format your response as JSON.
             {"updates_count": len(updates), "rationale": proposal.get("rationale")}
         )
 
+    async def propose_orchestrator_improvement(self, orchestrator_file: str, code_modifier: Any) -> Dict[str, Any]:
+        """
+        Analyze the EvolutionOrchestrator code and propose functional improvements.
+        (Self-Architecture improvement)
+        """
+        self.logger.info(f"Analyzing {orchestrator_file} for architectural improvements...")
+
+        with open(orchestrator_file, "r") as f:
+            current_code = f.read()
+
+        input_data = {
+            "current_code": current_code,
+            "performance_history": self.optimization_history[-5:] if self.optimization_history else "No history yet."
+        }
+
+        template_id = "architectural_optimization"
+        if template_id not in self.brain.prompt_templates:
+            from ..agents.brain import PromptTemplate
+            self.brain.prompt_templates[template_id] = PromptTemplate(
+                template_id=template_id,
+                name="System Architectural Optimization",
+                template="""
+You are a Lead AI System Architect. Review the core evolution orchestrator code:
+
+Current Code:
+{current_code}
+
+Performance Context:
+{performance_history}
+
+Please propose a functional improvement to the orchestrator's logic:
+1. "motivation": Why is this change needed?
+2. "proposed_code": The complete improved code for the orchestrator.
+3. "target_element": The specific class or method being improved.
+
+Format your response as JSON.
+""",
+                variables=["current_code", "performance_history"],
+                thought_type=ThoughtType.PLANNING,
+                max_tokens=4000,
+                temperature=0.3
+            )
+
+        thought = await self.brain.think(
+            thought_type=ThoughtType.PLANNING,
+            input_data=input_data,
+            template_id=template_id
+        )
+
+        proposal = thought.output
+        self.logger.info(f"Architectural improvement proposed: {proposal.get('motivation')}")
+
+        # In a real scenario, this would be passed to the consensus module before application
+        return proposal
+
     async def shutdown(self):
         """Shutdown the meta-optimizer."""
         self.logger.info("Meta-Optimizer shutdown.")

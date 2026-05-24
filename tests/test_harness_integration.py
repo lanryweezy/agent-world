@@ -31,6 +31,9 @@ async def test_evolved_skill_registration():
     planner.generate_plan = AsyncMock(return_value={"strategic_objective": "Evolve a service"})
 
     researcher = MagicMock(spec=CodeModifier)
+    researcher.brain = MagicMock()
+    researcher.brain.think = AsyncMock(return_value=MagicMock(output={"proposal": "idea", "consensus": "final idea"}))
+    researcher.brain.prompt_templates = {}
     researcher.design_modification = AsyncMock(return_value={
         "modification_id": "mod_1",
         "motivation": "Create a translator",
