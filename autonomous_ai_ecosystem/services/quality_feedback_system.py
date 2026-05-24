@@ -16,6 +16,7 @@ import uuid
 
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
+from ..knowledge.cognition_base import CognitionBase
 
 
 class FeedbackType(Enum):
@@ -151,14 +152,16 @@ class ServiceRecommendation:
 
 class ServiceQualityFeedbackSystem(AgentModule):
     """
-    Service quality and feedback system.
+    Service quality and feedback system. Supports the ASI-EVOLVE Community
+    Feedback Loop.
     
     Provides quality scoring, performance tracking, feedback collection,
     and service improvement recommendations.
     """
     
-    def __init__(self, agent_id: str = "quality_feedback_system"):
+    def __init__(self, agent_id: str = "quality_feedback_system", cognition_base: Optional[CognitionBase] = None):
         super().__init__(agent_id)
+        self.cognition_base = cognition_base
         self.logger = get_agent_logger(agent_id, "quality_feedback")
         
         # Core data structures
@@ -736,6 +739,15 @@ class ServiceQualityFeedbackSystem(AgentModule):
                 if feedback.rating and (feedback.rating <= 2.0 or feedback.rating >= 4.5):
                     asyncio.create_task(self.calculate_quality_score(feedback.agent_id))
                 
+                # ASI-EVOLVE: Feed community feedback back into Cognition Base
+                if self.cognition_base and feedback.comment:
+                    await self.cognition_base.add_knowledge(
+                        content=f"Community Feedback on {feedback.service_type}: {feedback.comment}",
+                        source=f"user_{feedback.provided_by}",
+                        category="community_prior",
+                        tags=[feedback.service_type, "feedback"]
+                    )
+
             except asyncio.TimeoutError:
                 continue
             except Exception as e:

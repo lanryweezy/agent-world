@@ -239,6 +239,9 @@ class CodeSandbox(AgentModule):
             result = await self._execute_in_sandbox(
                 execution_id, sanitized_code, environment, input_data
             )
+
+            # Anti-Fabrication Checks (Claw AI Lab paradigm)
+            self._perform_anti_fabrication_checks(result, code)
             
             # Validate output if expected
             if expected_output and result.status == ExecutionStatus.SUCCESS:
@@ -718,6 +721,25 @@ class CodeSandbox(AgentModule):
         
         return dangerous_modules
     
+    def _perform_anti_fabrication_checks(self, result: ExecutionResult, code: str):
+        """Detect fake metrics, placeholder code, or mock implementations."""
+        fabrication_indicators = []
+
+        # Check for placeholder metrics in code
+        placeholders = ["metric = 0.99", "accuracy = 0.95", "TODO", "mock_result"]
+        for p in placeholders:
+            if p in code:
+                fabrication_indicators.append(f"Potential placeholder/mock found in code: '{p}'")
+
+        # Check for suspiciously perfect/round numbers in stdout
+        if "0.999" in result.stdout or "1.000" in result.stdout:
+             fabrication_indicators.append("Suspiciously perfect metrics detected in output.")
+
+        if fabrication_indicators:
+            result.security_violations.extend(fabrication_indicators)
+            result.status = ExecutionStatus.SECURITY_VIOLATION
+            self.logger.warning(f"Anti-fabrication check triggered for {result.execution_id}")
+
     def _update_sandbox_stats(self, result: ExecutionResult) -> None:
         """Update sandbox statistics."""
         self.sandbox_stats["total_executions"] += 1
