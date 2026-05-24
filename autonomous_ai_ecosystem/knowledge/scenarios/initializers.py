@@ -68,3 +68,21 @@ class CognitionInitializer:
                 tags=["biomedical", "dti", "sinkhorn", "drug-discovery"],
                 visual_description="Bipartite graph matching diagram between drug nodes and protein domain nodes."
             )
+
+    @staticmethod
+    async def seed_math_discovery(cognition_base: CognitionBase):
+        """Seed knowledge for Mathematical Discovery tasks."""
+        priors = [
+            ("Strassen's algorithm (O(N^2.81)) can be improved using reinforcement learning and program search.", "Math Prior"),
+            ("Matrix multiplication can be framed as finding decompositions of a 3D tensor.", "Math Prior"),
+            ("Circle packing optimization benefits from variable radii and hexagonal close packing priors.", "Geometry Prior"),
+            ("SLSQP constrained optimization is effective for maximizing sum-of-radii in circle packing.", "Methodology"),
+            ("Differential evolution can be used for global refinement when local optimization plateaus.", "Methodology")
+        ]
+        for content, cat in priors:
+            await cognition_base.add_knowledge(
+                content,
+                source="Initial Seed (AlphaEvolve Paper)",
+                category=cat,
+                tags=["math", "matrix-multiplication", "circle-packing", "optimization"]
+            )
