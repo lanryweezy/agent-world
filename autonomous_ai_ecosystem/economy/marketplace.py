@@ -274,7 +274,8 @@ class ServiceMarketplace(AgentModule):
     Service marketplace system for autonomous AI agents.
     
     Provides a platform for agents to advertise services, find providers,
-    negotiate contracts, and conduct automated trading.
+    negotiate contracts, and conduct automated trading. Supports evolved
+    service subscriptions.
     """
     
     def __init__(self, agent_id: str, currency_system: VirtualCurrency):
@@ -288,6 +289,7 @@ class ServiceMarketplace(AgentModule):
         self.agent_capabilities: Dict[str, List[ServiceCapability]] = {}  # agent_id -> capabilities
         self.marketplace_transactions: Dict[str, MarketplaceTransaction] = {}
         self.service_reviews: Dict[str, ServiceReview] = {}
+        self.subscriptions: Dict[str, List[Dict[str, Any]]] = {} # user_id -> list of sub info
         
         # Marketplace configuration
         self.config = {
@@ -1339,10 +1341,32 @@ class ServiceMarketplace(AgentModule):
                 self.logger.error(f"Error in market analyzer: {e}")
                 await asyncio.sleep(300)
     
+    async def subscribe_to_service(self, agent_id: str, capability_id: str, duration_days: int = 30) -> bool:
+        """Allow an agent to subscribe to an evolved service."""
+        try:
+            self.logger.info(f"Agent {agent_id} subscribing to service {capability_id}")
+
+            if agent_id not in self.subscriptions:
+                self.subscriptions[agent_id] = []
+
+            from datetime import timedelta
+            subscription_info = {
+                "capability_id": capability_id,
+                "expiry": (datetime.now() + timedelta(days=duration_days)).isoformat(),
+                "status": "active"
+            }
+            self.subscriptions[agent_id].append(subscription_info)
+
+            log_agent_event(agent_id, "service_subscribed", {"capability_id": capability_id})
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to subscribe agent {agent_id} to {capability_id}: {e}")
+            return False
+
     async def _save_marketplace_state(self) -> None:
         """Save marketplace state to persistent storage."""
         try:
             # In a real implementation, this would save to persistent storage
-            self.logger.info(f"Saved marketplace state: {len(self.service_listings)} listings, {len(self.service_contracts)} contracts")
+            self.logger.info(f"Saved marketplace state: {len(self.service_listings)} listings, {len(self.service_contracts)} contracts, {len(self.subscriptions)} subscriptions")
         except Exception as e:
             self.logger.error(f"Error saving marketplace state: {e}")
