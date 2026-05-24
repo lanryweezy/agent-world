@@ -3,7 +3,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 class VectorMemory:
-    def __init__(self, embedding_dim=768):
+    def __init__(self, embedding_dim=384):
         self.embedding_dim = embedding_dim
         self.index = faiss.IndexFlatL2(self.embedding_dim)
         self.documents = []
@@ -15,6 +15,9 @@ class VectorMemory:
         self.documents.append(document)
 
     def search(self, query, k=5):
+        if not self.documents:
+            return []
+        k = min(k, len(self.documents))
         query_embedding = self.model.encode([query])[0]
         distances, indices = self.index.search(np.array([query_embedding], dtype=np.float32), k)
-        return [self.documents[i] for i in indices[0]]
+        return [self.documents[i] for i in indices[0] if i != -1]

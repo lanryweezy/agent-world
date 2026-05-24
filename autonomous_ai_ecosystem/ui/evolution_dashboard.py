@@ -5,7 +5,7 @@ Provides a visualization of the evolution progress, MAP-Elites niches,
 and research breakthroughs for human oversight.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger
 from ..learning.evolution_orchestrator import EvolutionOrchestrator

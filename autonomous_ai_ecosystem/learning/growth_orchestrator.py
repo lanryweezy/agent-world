@@ -8,7 +8,7 @@ connecting Arrow, Mirror, Quill, Flare, and Closer.
 from typing import Dict, Any, List
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
-from .growth.specialists import GrowthSpecialist
+from ..agents.growth.specialists import GrowthSpecialist
 
 class GrowthOrchestrator(AgentModule):
     """

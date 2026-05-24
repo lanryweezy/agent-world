@@ -81,11 +81,18 @@ class ResearchJournal(AgentModule):
         md += f"Through {len(history)} rounds of iteration, the system discovered an optimized solution with a fitness score of {final_node.score:.2f}.\n\n"
 
         md += "## Evolutionary Trajectory\n"
-        md += "| Round | Motivation | Result | Score | Lessons |\n"
-        md += "|-------|------------|--------|-------|---------|\n"
-        for entry in history:
-            lessons = "; ".join(entry.get("lessons", []))
-            md += f"| {entry['round']} | {entry['motivation'][:100]}... | {entry['status']} | {entry.get('score', 'N/A')} | {lessons[:100]}... |\n"
+        md += "| Node ID | Motivation | Result | Score | Lessons |\n"
+        md += "|---------|------------|--------|-------|---------|\n"
+        for node in history:
+            # Handle both dict and EvolutionNode objects
+            node_id = node.node_id if hasattr(node, "node_id") else node.get("round", "N/A")
+            motivation = node.motivation if hasattr(node, "motivation") else node.get("motivation", "N/A")
+            status = node.execution_result["status"] if hasattr(node, "execution_result") else node.get("status", "N/A")
+            score = node.score if hasattr(node, "score") else node.get("score", "N/A")
+            lessons_list = node.analysis.get("lessons_learned", []) if hasattr(node, "analysis") else node.get("lessons", [])
+            lessons = "; ".join(lessons_list)
+
+            md += f"| {node_id} | {motivation[:100]}... | {status} | {score} | {lessons[:100]}... |\n"
 
         md += "\n## Final Discovered Design\n"
         md += f"### Motivation\n{final_node.motivation}\n\n"
