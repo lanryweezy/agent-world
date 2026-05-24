@@ -278,7 +278,7 @@ class KnowledgeExtractor(AgentModule):
             self.logger.error(f"Failed to evaluate knowledge quality: {e}")
             return KnowledgeEvaluation(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
     
-        def update_interests(self, new_interests: List[str], weights: Optional[Dict[str, float]] = None) -> None:
+    def update_interests(self, new_interests: List[str], weights: Optional[Dict[str, float]] = None) -> None:
         """
         Update agent's learning interests.
         
@@ -611,7 +611,9 @@ class KnowledgeExtractor(AgentModule):
             'relevance_weight': 0.3,
             'credibility_weight': 0.25,
             'completeness_weight': 0.25
-        }    def _filter_and_deduplicate(self, knowledge_list: List[ExtractedKnowledge]) -> List[ExtractedKnowledge]:
+        }
+
+    def _filter_and_deduplicate(self, knowledge_list: List[ExtractedKnowledge]) -> List[ExtractedKnowledge]:
         """Filter and remove duplicate knowledge items."""
         try:
             # Filter by quality criteria

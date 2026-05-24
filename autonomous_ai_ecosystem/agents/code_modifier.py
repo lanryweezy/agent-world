@@ -17,7 +17,7 @@ from datetime import datetime
 from ..core.interfaces import AgentModule
 from ..core.logger import get_agent_logger, log_agent_event
 from .code_analyzer import CodeAnalyzer, ModificationProposal, CodeRiskLevel
-from .brain import AIBrain
+from .brain import AIBrain, ThoughtType
 
 
 class ModificationType(Enum):
@@ -76,7 +76,7 @@ class CodeModifier(AgentModule):
     code changes while maintaining safety and providing rollback capabilities.
     """
     
-    def __init__(self, agent_id: str, code_analyzer: CodeAnalyzer, brain: AIBrain):
+    def __init__(self, agent_id: str, code_analyzer: CodeAnalyzer, brain: Optional[AIBrain] = None):
         super().__init__(agent_id)
         self.code_analyzer = code_analyzer
         self.brain = brain
@@ -387,6 +387,97 @@ class CodeModifier(AgentModule):
             self.logger.error(f"Failed to rollback modification {modification_id}: {e}")
             return False
     
+    async def design_modification(
+        self,
+        target_file: str,
+        task_description: str,
+        cognition_context: List[Dict[str, Any]],
+        historical_experience: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Design a code modification based on cognition and past experience (Researcher role).
+        """
+        if not self.brain:
+            raise ValueError("AIBrain is required for designing modifications")
+
+        self.logger.info(f"Designing modification for {target_file}...")
+
+        # Read target file content
+        original_code = ""
+        if os.path.exists(target_file):
+            with open(target_file, 'r', encoding='utf-8') as f:
+                original_code = f.read()
+
+        input_data = {
+            "target_file": target_file,
+            "original_code": original_code,
+            "task_description": task_description,
+            "cognition_context": cognition_context,
+            "historical_experience": historical_experience
+        }
+
+        # Use AI Brain to design the modification
+        template_id = "code_design"
+        if template_id not in self.brain.prompt_templates:
+            from .brain import PromptTemplate
+            self.brain.prompt_templates[template_id] = PromptTemplate(
+                template_id=template_id,
+                name="Autonomous Code Design",
+                template="""
+You are an expert AI Software Engineer. Your task is to design a code modification to improve the system.
+
+Task Description:
+{task_description}
+
+Target File: {target_file}
+Original Code:
+{original_code}
+
+Cognition Context (Prior Knowledge):
+{cognition_context}
+
+Historical Experience (Past Lessons):
+{historical_experience}
+
+Based on the above, please:
+1. "motivation": Explain the reasoning behind your proposed design.
+2. "proposed_code": Provide the complete improved code for the target file.
+3. "modification_type": One of add_function, modify_function, add_class, etc.
+4. "target_element": The name of the function or class being modified.
+
+Format your response as JSON.
+""",
+                variables=["task_description", "target_file", "original_code", "cognition_context", "historical_experience"],
+                thought_type=ThoughtType.PLANNING,
+                max_tokens=3000,
+                temperature=0.7
+            )
+
+        thought = await self.brain.think(
+            thought_type=ThoughtType.PLANNING,
+            input_data=input_data,
+            template_id=template_id
+        )
+
+        design = thought.output
+
+        # Create a proposal
+        modification_id = await self.propose_modification(
+            target_file=target_file,
+            modification_type=ModificationType(design.get("modification_type", "modify_function")),
+            target_element=design.get("target_element", ""),
+            new_code=design.get("proposed_code", ""),
+            justification=design.get("motivation", ""),
+            original_code=original_code
+        )
+
+        return {
+            "modification_id": modification_id,
+            "motivation": design.get("motivation", ""),
+            "proposed_code": design.get("proposed_code", ""),
+            "confidence": thought.confidence
+        }
+
     async def generate_code_from_template(
         self,
         template_id: str,
