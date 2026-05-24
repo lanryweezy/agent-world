@@ -53,6 +53,7 @@ class AgentCore:
         # Lifecycle management
         self.current_phase = LifecyclePhase.INITIALIZING
         self.last_sleep_time: Optional[datetime] = None
+        self.last_learning_time: Optional[datetime] = None
         self.daily_cycle_start: Optional[datetime] = None
         self.is_running = False
         
@@ -95,6 +96,10 @@ class AgentCore:
             self.daily_cycle_start = datetime.now()
             self.is_running = True
             
+            # Create a wallet for the agent
+            if hasattr(self, 'currency_system'):
+                await self.currency_system.create_wallet(self.identity.agent_id)
+
             # Log birth event
             log_agent_event(
                 self.identity.agent_id,
@@ -137,6 +142,9 @@ class AgentCore:
                     await self._enter_sleep_mode()
                     break
                 
+                # Periodically consider reproduction
+                await self._consider_reproduction()
+
                 # Brief pause to prevent busy waiting
                 await asyncio.sleep(1)
             
@@ -298,7 +306,82 @@ class AgentCore:
         if hasattr(self, 'daily_planner'):
             return await self.daily_planner.execute_next_activity()
         return {"error": "Daily planner not available"}
-    
+
+    async def reflect_on_last_action(self, task: Dict[str, Any], outcome: Dict[str, Any], ground_truth: Optional[Any] = None) -> None:
+        """
+        Reflect on the last action or completed task to generate insights.
+        """
+        if hasattr(self, 'reflection_engine'):
+            self.logger.info("Reflecting on last action.")
+            if ground_truth is not None:
+                await self.reflection_engine.verified_reflect(task, outcome, ground_truth)
+            else:
+                await self.reflection_engine.self_reflect(task, outcome)
+        else:
+            self.logger.warning("Reflection engine not available.")
+
+    # --- Economic Interaction Methods ---
+
+    async def offer_service(self, service_name: str, description: str, category: Any, price: float, currency: Any) -> Dict[str, Any]:
+        """
+        Offers a new service on the marketplace.
+
+        Args:
+            service_name: The name of the service.
+            description: A description of the service.
+            category: The service category (e.g., ServiceCategory.RESEARCH).
+            price: The base price for the service.
+            currency: The currency for the price (e.g., CurrencyType.NEURAL_CREDITS).
+
+        Returns:
+            A dictionary containing the result of the listing attempt.
+        """
+        if hasattr(self, 'marketplace'):
+            self.logger.info(f"Offering service '{service_name}' on the marketplace.")
+            # In a real scenario, capabilities would be dynamically assessed.
+            # For now, we assume the agent is capable of what it offers.
+            return await self.marketplace.create_service_listing(
+                provider_id=self.identity.agent_id,
+                service_name=service_name,
+                description=description,
+                category=category,
+                base_price=price,
+                currency_type=currency,
+                capabilities=[]
+            )
+        return {"success": False, "error": "Marketplace module not available."}
+
+    async def find_and_purchase_service(self, query: str) -> Optional[Dict[str, Any]]:
+        """
+        Finds a service on the marketplace and attempts to purchase the first result.
+
+        Args:
+            query: A search query to find the service.
+
+        Returns:
+            The contract details if purchase was successful, otherwise None.
+        """
+        if hasattr(self, 'marketplace'):
+            self.logger.info(f"Searching for service with query: '{query}'")
+            services = await self.marketplace.search_services(keywords=[query], available_only=True)
+
+            if not services:
+                self.logger.warning(f"No available services found for query: '{query}'")
+                return None
+
+            # Attempt to purchase the first service found
+            top_service = services[0]
+            self.logger.info(f"Attempting to purchase service '{top_service['service_name']}' ({top_service['listing_id']})")
+
+            return await self.marketplace.request_service(
+                client_id=self.identity.agent_id,
+                listing_id=top_service['listing_id'],
+                service_description=f"Service request based on query: {query}"
+            )
+
+        self.logger.error("Marketplace module not available for service purchase.")
+        return None
+
     # Private helper methods
     
     async def _setup_core_modules(self) -> None:
@@ -314,12 +397,62 @@ class AgentCore:
             from ..agents.reasoning import ReasoningEngine, PlanningEngine
             from ..agents.daily_planner import DailyPlanner
             from ..agents.thought_processor import ThoughtProcessor
-            
+            from ..agents.reflection import ReflectionEngine
+            from ..learning.web_browser import WebBrowser
+            from ..tools.tool_router import ToolRouter
+            from ..tools.web_tools import WebSearchTool
+            from ..agents.code_analyzer import CodeAnalyzer
+            from ..agents.code_modifier import CodeModifier
+            from ..safety.safety_validator import ComprehensiveSafetyValidator
+            from ..economy.currency import VirtualCurrency
+            from ..economy.marketplace import ServiceMarketplace
+            from ..agents.genetics import GeneticAlgorithm
+            from ..agents.reproduction_manager import ReproductionManager
+            from ..agents.social_manager import SocialManager
+            from ..agents.status_manager import StatusManager
+            from ..tools.world_tools import CheckSurroundingsTool, MoveTool, StartConstructionProjectTool
+            from ..world.virtual_world import VirtualWorld
+            from ..world.construction import CollaborativeConstruction
+
             # Create core modules
             memory_system = MemorySystem(self.identity.agent_id, self.config.data_directory)
             emotion_engine = EmotionEngine(self.identity.agent_id, self.identity.personality_traits)
-            ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits)
-            
+            ai_brain = AIBrain(self.identity.agent_id, self.config.llm, self.identity.personality_traits, memory_system)
+
+            # Setup world and construction singletons
+            virtual_world = VirtualWorld(agent_id=self.identity.agent_id)
+            construction_manager = CollaborativeConstruction(agent_id=self.identity.agent_id, virtual_world=virtual_world)
+            self.virtual_world = virtual_world
+            self.construction_manager = construction_manager
+
+            # Setup Tools and ToolRouter
+            web_browser = WebBrowser(self.identity.agent_id, self.config.learning)
+            web_search_tool = WebSearchTool(web_browser)
+
+            # Add world tools
+            world_tools = [
+                CheckSurroundingsTool(self.virtual_world),
+                MoveTool(self.virtual_world),
+                StartConstructionProjectTool(self.construction_manager)
+            ]
+            all_tools = [web_search_tool] + world_tools
+            tool_router = ToolRouter(tools=all_tools, brain=ai_brain, agent_id=self.identity.agent_id)
+
+            # Setup self-modification modules
+            code_analyzer = CodeAnalyzer(self.identity.agent_id)
+            code_modifier = CodeModifier(self.identity.agent_id, code_analyzer, ai_brain)
+            safety_validator = ComprehensiveSafetyValidator(self.identity.agent_id)
+
+            # Setup economy modules
+            currency_system = VirtualCurrency(self.identity.agent_id)
+            marketplace = ServiceMarketplace(self.identity.agent_id, currency_system)
+
+            # Setup social and reproduction modules
+            social_manager = SocialManager(self.identity.agent_id)
+            status_manager = StatusManager(self.identity.agent_id)
+            genetic_algorithm = GeneticAlgorithm(self.identity.agent_id)
+            reproduction_manager = ReproductionManager(self.identity.agent_id, genetic_algorithm, social_manager, status_manager, emotion_engine)
+
             # Create decision maker with the correct parameters
             decision_maker = DecisionMaker(self.identity.agent_id, emotion_engine, memory_system)
             
@@ -335,29 +468,54 @@ class AgentCore:
                 planning_engine, daily_planner, emotion_engine,
                 memory_system, self.identity.personality_traits
             )
-            
+            reflection_engine = ReflectionEngine(self.identity.agent_id, ai_brain, memory_system)
+
             # Register modules with dependencies
             await self.register_module("memory_system", memory_system)
             await self.register_module("emotion_engine", emotion_engine)
             await self.register_module("ai_brain", ai_brain)
+            await self.register_module("tool_router", tool_router, ["ai_brain"])
+            await self.register_module("code_analyzer", code_analyzer)
+            await self.register_module("code_modifier", code_modifier, ["code_analyzer", "ai_brain"])
+            await self.register_module("safety_validator", safety_validator)
+            await self.register_module("currency_system", currency_system)
+            await self.register_module("marketplace", marketplace, ["currency_system"])
+            await self.register_module("social_manager", social_manager)
+            await self.register_module("status_manager", status_manager)
+            await self.register_module("genetic_algorithm", genetic_algorithm)
+            await self.register_module("reproduction_manager", reproduction_manager, ["genetic_algorithm", "social_manager", "status_manager", "emotion_engine"])
             await self.register_module("decision_maker", decision_maker, ["emotion_engine", "memory_system"])
             await self.register_module("reasoning_engine", reasoning_engine, ["ai_brain"])
             await self.register_module("planning_engine", planning_engine, ["ai_brain", "reasoning_engine"])
             await self.register_module("daily_planner", daily_planner, ["ai_brain", "reasoning_engine", "planning_engine"])
-            await self.register_module("thought_processor", thought_processor, 
-                                     ["ai_brain", "reasoning_engine", "planning_engine", 
+            await self.register_module("thought_processor", thought_processor,
+                                     ["ai_brain", "reasoning_engine", "planning_engine",
                                       "daily_planner", "emotion_engine", "memory_system"])
-            
+            await self.register_module("reflection_engine", reflection_engine, ["ai_brain", "memory_system"])
+            await self.register_module("virtual_world", virtual_world)
+            await self.register_module("construction_manager", construction_manager, ["virtual_world"])
+
             # Store references for easy access
             self.memory_system = memory_system
             self.emotion_engine = emotion_engine
             self.decision_maker = decision_maker
             self.ai_brain = ai_brain
+            self.tool_router = tool_router
+            self.code_analyzer = code_analyzer
+            self.code_modifier = code_modifier
+            self.safety_validator = safety_validator
+            self.currency_system = currency_system
+            self.marketplace = marketplace
+            self.social_manager = social_manager
+            self.status_manager = status_manager
+            self.genetic_algorithm = genetic_algorithm
+            self.reproduction_manager = reproduction_manager
             self.reasoning_engine = reasoning_engine
             self.planning_engine = planning_engine
             self.daily_planner = daily_planner
             self.thought_processor = thought_processor
-            
+            self.reflection_engine = reflection_engine
+
             self.logger.info("Core modules setup completed")
             
         except Exception as e:
@@ -488,49 +646,134 @@ class AgentCore:
         return True
     
     def _should_enter_learning_phase(self) -> bool:
-        """Check if it's time to enter learning phase."""
-        # Simplified logic - would be more complex in reality
-        return False
+        """
+        Check if it's time to enter learning phase based on curiosity and time.
+        """
+        # Check if enough time has passed since the last learning session
+        if self.last_learning_time:
+            hours_since_last_learning = (datetime.now() - self.last_learning_time).total_seconds() / 3600
+            if hours_since_last_learning < self.config.learning.get("min_hours_between_learning", 4):
+                return False
+
+        # Check if curiosity is high
+        is_curious = self.state.emotional_state.get("curiosity", 0.0) > 0.8
+        return is_curious
     
     async def _enter_learning_phase(self) -> None:
-        """Enter learning phase to acquire new knowledge."""
+        """
+        Enter learning phase to acquire new knowledge based on the agent's destiny.
+        """
         self.logger.info("Entering learning phase")
         self.current_phase = LifecyclePhase.LEARNING
-        
+        self.state.status = AgentStatus.LEARNING
+        self.last_learning_time = datetime.now()
+
         try:
-            # Would integrate with learning module here
-            await asyncio.sleep(2)  # Simulate learning time
-            
+            # Formulate a natural language request based on the agent's destiny
+            request = f"Research the latest advancements and news about {self.identity.destiny}"
+            self.logger.info(f"Formulated learning request: '{request}'")
+
+            # Use the ToolRouter to handle the request
+            if hasattr(self, 'tool_router'):
+                # The result should be from the web_search tool, which returns a dict
+                search_results = await self.tool_router.route_request(request)
+
+                if isinstance(search_results, dict) and "error" not in search_results:
+                    # Store the gathered information in the knowledge base
+                    for url, content in search_results.items():
+                        if content:
+                            await self.memory_system.add_to_knowledge_base(
+                                source=url,
+                                content=content,
+                                tags=[self.identity.destiny, "web_research", "learning_phase"]
+                            )
+                    self.logger.info(f"Learning complete. Stored content from {len(search_results)} sources.")
+                else:
+                    self.logger.error(f"Learning phase failed: ToolRouter returned an error: {search_results}")
+            else:
+                self.logger.warning("Tool router not available for learning.")
+
             self.metrics["learning_sessions"] += 1
-            self.current_phase = LifecyclePhase.ACTIVE
             
         except Exception as e:
             self.logger.error(f"Error in learning phase: {e}")
+        finally:
+            # Return to active state
             self.current_phase = LifecyclePhase.ACTIVE
+            self.state.status = AgentStatus.ACTIVE
     
     def _should_enter_sleep_mode(self) -> bool:
-        """Check if it's time to enter sleep mode."""
-        # Simplified logic - would be more complex in reality
-        return False
+        """
+        Check if the agent should enter sleep mode based on its lifecycle duration.
+        """
+        if not self.daily_cycle_start:
+            return False
+
+        cycle_duration_hours = (datetime.now() - self.daily_cycle_start).total_seconds() / 3600
+
+        # Enter sleep if cycle duration exceeds configured lifecycle hours
+        return cycle_duration_hours >= self.config.agent_lifecycle_hours
     
     async def _enter_sleep_mode(self) -> None:
         """Enter sleep mode for code modification."""
         await self.enter_sleep_mode()
     
     async def _enter_modification_phase(self) -> None:
-        """Allow agent to modify its own code during sleep."""
-        self.logger.info("Entering code modification phase")
+        """
+        Allow agent to propose modifications to its own code during sleep,
+        driven by an analysis of its past failures.
+        """
+        self.logger.info("Entering code modification phase.")
         self.current_phase = LifecyclePhase.MODIFYING
         
         try:
-            # Would integrate with code modification module here
-            await asyncio.sleep(1)  # Simulate modification time
+            if not all(hasattr(self, m) for m in ['memory_system', 'ai_brain', 'code_modifier']):
+                self.logger.warning("Missing required modules for self-modification. Skipping.")
+                return
+
+            # 1. Retrieve recent failures
+            failures = await self.memory_system.retrieve_failures(limit=5)
+            if not failures:
+                self.logger.info("No recent failures found. No self-modification needed at this time.")
+                return
+
+            # 2. Synthesize a modification goal from failures
+            failure_descriptions = [f.content for f in failures]
+            goal_synthesis_prompt = {
+                "problem": "Based on the following list of my past failures, what is a single, high-level goal for improving my own code to prevent these failures in the future? The goal should be a concise instruction for a programmer.",
+                "context": {"failures": failure_descriptions},
+                "constraints": ["The goal should be actionable and target a potential root cause.", "Output only the goal as a single sentence."]
+            }
             
-            self.metrics["code_modifications"] += 1
-            self.current_phase = LifecyclePhase.SLEEPING
-            
+            synthesis_thought = await self.ai_brain.solve_problem(**goal_synthesis_prompt)
+            modification_goal = synthesis_thought.get("solution")
+
+            if not modification_goal:
+                self.logger.error("Could not synthesize a modification goal from failures.")
+                return
+
+            self.logger.info(f"Synthesized self-modification goal from failures: {modification_goal}")
+
+            # 3. Propose the modification
+            # For now, we'll target the agent's own core file as a default.
+            # A more advanced agent would use its code_analyzer to find the best file to modify.
+            target_file = "autonomous_ai_ecosystem/core/agent_core.py"
+
+            modification_id = await self.code_modifier.propose_llm_based_modification(
+                file_path=target_file,
+                goal=modification_goal
+            )
+
+            if modification_id:
+                self.logger.info(f"Successfully proposed modification {modification_id} based on past failures.")
+                self.metrics["code_modifications"] += 1
+            else:
+                self.logger.error(f"Failed to propose a self-modification based on goal: {modification_goal}")
+
         except Exception as e:
-            self.logger.error(f"Error in modification phase: {e}")
+            self.logger.error(f"An error occurred during the modification phase: {e}")
+        finally:
+            # Always return to sleeping phase after attempting modification
             self.current_phase = LifecyclePhase.SLEEPING
     
     async def _validate_code_changes(self) -> bool:
@@ -571,6 +814,8 @@ class AgentCore:
                 await self._handle_knowledge_message(message)
             elif message.message_type == MessageType.COMMAND:
                 await self._handle_command_message(message)
+            elif message.message_type == MessageType.REPRODUCTION_PROPOSAL:
+                await self._handle_reproduction_proposal_message(message)
             else:
                 self.logger.warning(f"Unknown message type: {message.message_type}")
         except Exception as e:
@@ -599,3 +844,51 @@ class AgentCore:
     async def _handle_priority_message(self, message: AgentMessage) -> None:
         """Handle high-priority messages immediately."""
         await self._handle_message(message)
+
+    async def _handle_reproduction_proposal_message(self, message: AgentMessage) -> None:
+        """Handles an incoming reproduction proposal from another agent."""
+        if not hasattr(self, 'reproduction_manager'):
+            return
+
+        proposal_id = message.content.get("proposal_id")
+        proposer_id = message.sender_id
+        self.logger.info(f"Received reproduction proposal {proposal_id} from {proposer_id}.")
+
+        # Agent decides whether to accept
+        desire = await self.reproduction_manager.assess_reproduction_readiness(self.identity.agent_id)
+
+        # Simple logic: accept if motivation is high and proposer is a preferred partner
+        accept = False
+        if desire.motivation_score > 0.7 and proposer_id in desire.preferred_partners:
+            accept = True
+            self.logger.info(f"Accepting reproduction proposal from {proposer_id}.")
+        else:
+            self.logger.info(f"Rejecting reproduction proposal from {proposer_id}.")
+
+        await self.reproduction_manager.respond_to_proposal(proposal_id, accept=accept)
+
+    async def _consider_reproduction(self) -> None:
+        """Periodically considers if the agent should attempt to reproduce."""
+        if not hasattr(self, 'reproduction_manager'):
+            return
+
+        # Simple trigger: consider every so often, not on every cycle
+        if random.random() < 0.01: # 1% chance per cycle
+            desire = await self.reproduction_manager.assess_reproduction_readiness(self.identity.agent_id)
+
+            if desire.readiness_level in ["ready", "eager"] and desire.preferred_partners:
+                # Propose to the first preferred partner
+                partner_id = desire.preferred_partners[0]
+                self.logger.info(f"Feeling ready to reproduce. Proposing to {partner_id}.")
+
+                try:
+                    proposal_id = await self.reproduction_manager.propose_reproduction(self.identity.agent_id, partner_id)
+
+                    # Send a message to the target agent to notify them of the proposal
+                    # In a real system, a more robust communication channel would be used
+                    # For now, we assume the other agent can be messaged directly if its core is known
+                    # This part is complex as it requires inter-agent communication, which is not fully implemented
+                    self.logger.info(f"Sent reproduction proposal {proposal_id} to {partner_id}. (Simulation only, no actual message sent).")
+
+                except Exception as e:
+                    self.logger.error(f"Failed to propose reproduction to {partner_id}: {e}")

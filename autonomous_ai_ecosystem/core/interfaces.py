@@ -23,7 +23,7 @@ class MessageType(Enum):
     COLLABORATION_REQUEST = "collaboration_request"
     TASK_ASSIGNMENT = "task_assignment"
     STATUS_UPDATE = "status_update"
-    REPRODUCTION_REQUEST = "reproduction_request"
+    REPRODUCTION_PROPOSAL = "reproduction_proposal"
     HUMAN_COMMAND = "human_command"
 
 
@@ -250,6 +250,11 @@ class AgentState:
     energy_level: float = 1.0
     stress_level: float = 0.0
     last_state_update: datetime = field(default_factory=datetime.now)
+
+    # World position
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
     
     def __post_init__(self):
         """Validate state data after initialization."""
@@ -689,4 +694,33 @@ class MemoryInterface(ABC):
     @abstractmethod
     async def consolidate_memories(self) -> None:
         """Consolidate short-term memories to long-term."""
+        pass
+
+
+class ToolInterface(ABC):
+    """Abstract base class for all tools available to agents."""
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """The unique name of the tool."""
+        pass
+
+    @property
+    @abstractmethod
+    def description(self) -> str:
+        """A description of what the tool does, used by the ToolRouter."""
+        pass
+
+    @abstractmethod
+    async def execute(self, **kwargs) -> Any:
+        """
+        Execute the tool with the given arguments.
+
+        Args:
+            **kwargs: The arguments required by the tool.
+
+        Returns:
+            The result of the tool's execution.
+        """
         pass

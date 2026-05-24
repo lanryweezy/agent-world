@@ -273,6 +273,304 @@ class TestAgentCore:
         assert not agent.message_queue.empty()
         assert agent.metrics["messages_processed"] == 1
 
+    @patch('autonomous_ai_ecosystem.core.agent_core.AgentCore._enter_learning_phase', new_callable=Mock)
+    @patch('autonomous_ai_ecosystem.core.agent_core.AgentCore._enter_sleep_mode', new_callable=Mock)
+    async def test_agent_lifecycle_phases(self, mock_enter_sleep_mode, mock_enter_learning_phase):
+        """Test that agent enters learning and sleep phases based on state."""
+        identity = AgentIdentity(
+            agent_id="test_agent_lifecycle",
+            name="Lifecycle Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="To test lifecycles",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        config.agent_lifecycle_hours = 0.001 # Set a very short lifecycle for testing sleep mode
+
+        agent = AgentCore(identity, config)
+        await agent.initialize()
+
+        # --- Test Learning Phase ---
+        # Set high curiosity to trigger learning
+        agent.state.emotional_state['curiosity'] = 0.9
+
+        # Run cycle briefly
+        with patch('asyncio.sleep', new_callable=Mock):
+             # We patch sleep to speed up the loop
+            cycle_task = asyncio.create_task(agent.run_daily_cycle())
+            await asyncio.sleep(0.01)
+            agent.is_running = False # Stop the cycle
+            await cycle_task
+
+        # Assert that learning phase was entered
+        mock_enter_learning_phase.assert_called()
+
+        # --- Test Sleep Phase ---
+        # Reset agent state for sleep test
+        agent.is_running = True
+        agent.daily_cycle_start = datetime.now() - timedelta(hours=1) # Pretend cycle has been running
+
+        # Run cycle again
+        with patch('asyncio.sleep', new_callable=Mock):
+            cycle_task = asyncio.create_task(agent.run_daily_cycle())
+            await asyncio.sleep(0.01)
+            agent.is_running = False
+            await cycle_task
+
+        # Assert that sleep mode was entered
+        mock_enter_sleep_mode.assert_called()
+
+    @patch('autonomous_ai_ecosystem.tools.tool_router.ToolRouter')
+    async def test_learning_phase_with_tool_router(self, MockToolRouter):
+        """Test that the learning phase correctly uses the ToolRouter."""
+        identity = AgentIdentity(
+            agent_id="test_agent_learning",
+            name="Learner Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="quantum physics",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # We need to manually initialize modules to inject our mock
+        await agent.initialize()
+        mock_router_instance = agent.tool_router
+        mock_router_instance.route_request = AsyncMock(return_value={
+            "https://example.com/quantum": "Content about quantum physics."
+        })
+
+        # Mock the memory system's method to check it's called
+        agent.memory_system.add_to_knowledge_base = AsyncMock()
+
+        # Call the learning phase
+        await agent._enter_learning_phase()
+
+        # Assert that the tool router was called with the correct request
+        mock_router_instance.route_request.assert_awaited_once()
+        request_arg = mock_router_instance.route_request.call_args[0][0]
+        assert "Research" in request_arg
+        assert "quantum physics" in request_arg
+
+        # Assert that the result was processed and stored in memory
+        agent.memory_system.add_to_knowledge_base.assert_awaited_once()
+        store_call_args = agent.memory_system.add_to_knowledge_base.call_args[1]
+        assert store_call_args['source'] == "https://example.com/quantum"
+        assert "Content about quantum physics" in store_call_args['content']
+
+    @patch('autonomous_ai_ecosystem.agents.code_modifier.CodeModifier')
+    async def test_modification_phase(self, MockCodeModifier):
+        """Test that the modification phase correctly uses the CodeModifier."""
+        identity = AgentIdentity(
+            agent_id="test_agent_modifier",
+            name="Modifier Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="to improve itself",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize agent and mock the code_modifier
+        await agent.initialize()
+        mock_modifier_instance = agent.code_modifier
+        mock_modifier_instance.propose_llm_based_modification = AsyncMock(return_value="mod_12345")
+
+        # Call the modification phase
+        await agent._enter_modification_phase()
+
+        # Assert that the code modifier was called
+        mock_modifier_instance.propose_llm_based_modification.assert_awaited_once()
+
+        # Assert that the metrics were updated
+        assert agent.metrics["code_modifications"] == 1
+
+    async def test_economic_interactions(self):
+        """Test the agent's ability to interact with the marketplace."""
+        identity = AgentIdentity(
+            agent_id="test_agent_economy",
+            name="Econ Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to get rich",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize agent to get modules set up
+        await agent.initialize()
+
+        # Mock the marketplace methods
+        agent.marketplace.create_service_listing = AsyncMock(return_value={"success": True, "listing_id": "listing_1"})
+        agent.marketplace.search_services = AsyncMock(return_value=[{"listing_id": "listing_2", "service_name": "Test Service"}])
+        agent.marketplace.request_service = AsyncMock(return_value={"success": True, "contract_id": "contract_1"})
+
+        # 1. Test offering a service
+        from autonomous_ai_ecosystem.economy.marketplace import ServiceCategory
+        from autonomous_ai_ecosystem.economy.currency import CurrencyType
+
+        offer_result = await agent.offer_service(
+            service_name="Test Service",
+            description="A service for testing.",
+            category=ServiceCategory.RESEARCH,
+            price=50.0,
+            currency=CurrencyType.NEURAL_CREDITS
+        )
+
+        assert offer_result["success"]
+        agent.marketplace.create_service_listing.assert_awaited_once()
+
+        # 2. Test purchasing a service
+        purchase_result = await agent.find_and_purchase_service("testing")
+
+        assert purchase_result["success"]
+        agent.marketplace.search_services.assert_awaited_once_with(keywords=["testing"], available_only=True)
+        agent.marketplace.request_service.assert_awaited_once()
+
+    @patch('autonomous_ai_ecosystem.agents.memory.MemorySystem')
+    @patch('autonomous_ai_ecosystem.agents.brain.AIBrain')
+    @patch('autonomous_ai_ecosystem.agents.code_modifier.CodeModifier')
+    async def test_modification_phase_is_experience_driven(self, MockCodeModifier, MockAIBrain, MockMemorySystem):
+        """Test that the modification phase is driven by past failures."""
+        identity = AgentIdentity(
+            agent_id="test_agent_exp_modifier",
+            name="Smart Agent",
+            gender=AgentGender.NON_BINARY,
+            personality_traits=generate_personality_traits(),
+            destiny="to learn from mistakes",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Manually attach mocked modules
+        agent.memory_system = MockMemorySystem()
+        agent.ai_brain = MockAIBrain()
+        agent.code_modifier = MockCodeModifier()
+
+        # Mock the module return values
+        mock_failure_memory = Mock()
+        mock_failure_memory.content = "Failed to calculate trajectory."
+        agent.memory_system.retrieve_failures = AsyncMock(return_value=[mock_failure_memory])
+
+        synthesized_goal = "Improve the trajectory calculation logic."
+        agent.ai_brain.solve_problem = AsyncMock(return_value={"solution": synthesized_goal})
+
+        agent.code_modifier.propose_llm_based_modification = AsyncMock(return_value="mod_67890")
+
+        # Call the modification phase
+        await agent._enter_modification_phase()
+
+        # 1. Assert that failures were retrieved from memory
+        agent.memory_system.retrieve_failures.assert_awaited_once()
+
+        # 2. Assert that the brain was asked to synthesize a goal
+        agent.ai_brain.solve_problem.assert_awaited_once()
+        prompt_context = agent.ai_brain.solve_problem.call_args[1]['context']
+        assert mock_failure_memory.content in prompt_context['failures']
+
+        # 3. Assert that the code modifier was called with the synthesized goal
+        agent.code_modifier.propose_llm_based_modification.assert_awaited_once()
+        call_goal = agent.code_modifier.propose_llm_based_modification.call_args[1]['goal']
+        assert call_goal == synthesized_goal
+
+    @patch('autonomous_ai_ecosystem.agents.reproduction_manager.ReproductionManager')
+    async def test_reproduction_proposal_handling(self, MockReproductionManager):
+        """Test that the agent core correctly handles a reproduction proposal message."""
+        identity = AgentIdentity(
+            agent_id="test_agent_repro_responder",
+            name="Responder Agent",
+            gender=AgentGender.FEMALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to respond to proposals",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+        await agent.initialize()
+
+        # Manually attach mocked manager
+        agent.reproduction_manager = MockReproductionManager()
+        agent.reproduction_manager.respond_to_proposal = AsyncMock()
+        agent.reproduction_manager.assess_reproduction_readiness = AsyncMock(
+            return_value=Mock(motivation_score=0.8, preferred_partners=["proposer_agent"])
+        )
+
+        # Create and process a proposal message
+        proposal_message = AgentMessage(
+            message_id="repro_msg_1",
+            sender_id="proposer_agent",
+            recipient_id=agent.identity.agent_id,
+            message_type=MessageType.REPRODUCTION_PROPOSAL,
+            content={"proposal_id": "proposal_123"},
+            timestamp=datetime.now()
+        )
+        await agent.process_message(proposal_message)
+
+        # We need to run the message handling part of the cycle
+        await agent._process_pending_messages()
+
+        # Assert that the reproduction manager was called to respond
+        agent.reproduction_manager.respond_to_proposal.assert_awaited_once_with(
+            "proposal_123",
+            accept=True
+        )
+
+    @patch('autonomous_ai_ecosystem.world.virtual_world.VirtualWorld.initialize', new_callable=AsyncMock)
+    @patch('autonomous_ai_ecosystem.world.construction.CollaborativeConstruction.initialize', new_callable=AsyncMock)
+    @patch('autonomous_ai_ecosystem.world.virtual_world.VirtualWorld.move_agent', new_callable=AsyncMock)
+    async def test_agent_world_interaction_via_tool_router(self, mock_move_agent, mock_construction_init, mock_world_init):
+        """Test that agent can interact with the world via the tool router."""
+        from autonomous_ai_ecosystem.world.virtual_world import VirtualWorld
+        from autonomous_ai_ecosystem.world.construction import CollaborativeConstruction
+
+        # --- Arrange ---
+        identity = AgentIdentity(
+            agent_id="test_agent_world_user",
+            name="World User Agent",
+            gender=AgentGender.MALE,
+            personality_traits=generate_personality_traits(),
+            destiny="to explore the world",
+            birth_timestamp=datetime.now()
+        )
+        config = Config()
+        agent = AgentCore(identity, config)
+
+        # Initialize the agent, which will create the singleton instances
+        # and the tool router with the real world tools.
+        await agent.initialize()
+
+        # Mock the brain's response to select the 'move' tool
+        move_tool_response = {
+            "tool_name": "move_agent_in_world",
+            "arguments": {"direction": "north"}
+        }
+        # The tool router uses generate_text, so we mock that on the agent's brain
+        agent.ai_brain.generate_text = AsyncMock(return_value=json.dumps(move_tool_response))
+
+        # The tool's execute method will call the virtual_world's move_agent method.
+        # We mock the return value of the world's method.
+        mock_move_agent.return_value = {"success": True, "new_location": "loc_north"}
+
+        # --- Act ---
+        request = "Move one step to the north"
+        result = await agent.tool_router.route_request(request)
+
+        # --- Assert ---
+        # 1. The brain was called to make a decision
+        agent.ai_brain.generate_text.assert_awaited_once()
+
+        # 2. The virtual world's move_agent method was called with the correct parameters
+        mock_move_agent.assert_awaited_once_with(agent.identity.agent_id, "north")
+
+        # 3. The final result is passed back through the router
+        self.assertIn("success", result)
+        self.assertTrue(result["success"])
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

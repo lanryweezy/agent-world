@@ -350,6 +350,101 @@ class TestMemorySystem:
         # Cache should contain the query
         assert len(self.memory_system.retrieval_cache) > 0
 
+    @pytest.mark.asyncio
+    async def test_knowledge_base_functionality(self):
+        """Test the 'In-House Tool' knowledge base functionality."""
+        await self.memory_system.initialize()
+
+        source_url = "https://example.com/ai-research"
+        content = "A new study on meta-learning shows promising results for self-improving agents."
+        tags = ["meta-learning", "ai-research"]
+
+        # 1. Add to knowledge base
+        knowledge_id = await self.memory_system.add_to_knowledge_base(source_url, content, tags)
+        assert knowledge_id is not None
+
+        # 2. Query the knowledge base
+        query_results = await self.memory_system.query_knowledge_base("meta-learning")
+        assert len(query_results) == 1
+        assert query_results[0]["knowledge_id"] == knowledge_id
+        assert "<b>meta-learning</b>" in query_results[0]["snippet"]
+
+        # 3. Get knowledge by ID
+        retrieved_knowledge = await self.memory_system.get_knowledge_by_id(knowledge_id)
+        assert retrieved_knowledge is not None
+        assert retrieved_knowledge["knowledge_id"] == knowledge_id
+        assert retrieved_knowledge["source"] == source_url
+        assert retrieved_knowledge["content"] == content
+        assert "meta-learning" in retrieved_knowledge["tags"]
+
+    @pytest.mark.asyncio
+    async def test_retrieve_relevant_experiences(self):
+        """Test the retrieval of relevant experiences."""
+        await self.memory_system.initialize()
+
+        # Store a relevant experience
+        experience1 = self.memory_system.create_memory(
+            content="Learned that for complex calculations, it's best to use a calculator tool.",
+            memory_type="procedural",
+            tags=["experience", "calculation", "tools"]
+        )
+        await self.memory_system.store_memory(experience1)
+
+        # Store another relevant experience
+        experience2 = self.memory_system.create_memory(
+            content="When performing calculations, always double check the inputs.",
+            memory_type="procedural",
+            tags=["experience", "calculation", "verification"]
+        )
+        await self.memory_system.store_memory(experience2)
+
+        # Store an irrelevant memory
+        other_memory = self.memory_system.create_memory(
+            content="The sky is blue.",
+            memory_type="semantic",
+            tags=["facts", "nature"]
+        )
+        await self.memory_system.store_memory(other_memory)
+
+        # Retrieve experiences related to "calculations"
+        results = await self.memory_system.retrieve_relevant_experiences("calculations", limit=2)
+
+        # Assertions
+        assert len(results) == 2
+        result_ids = {mem.memory_id for mem in results}
+        assert experience1.memory_id in result_ids
+        assert experience2.memory_id in result_ids
+        assert other_memory.memory_id not in result_ids
+
+    @pytest.mark.asyncio
+    async def test_retrieve_failures(self):
+        """Test the retrieval of failure memories."""
+        await self.memory_system.initialize()
+
+        # Store a failure memory
+        failure_memory = self.memory_system.create_memory(
+            content="A task failed because of a calculation error.",
+            memory_type="procedural",
+            tags=["experience", "failure", "calculation"]
+        )
+        await self.memory_system.store_memory(failure_memory)
+
+        # Store a success memory
+        success_memory = self.memory_system.create_memory(
+            content="A task succeeded.",
+            memory_type="procedural",
+            tags=["experience", "success"]
+        )
+        await self.memory_system.store_memory(success_memory)
+
+        # Retrieve failures
+        results = await self.memory_system.retrieve_failures(limit=5)
+
+        # Assertions
+        assert len(results) == 1
+        assert results[0].memory_id == failure_memory.memory_id
+        assert "failure" in results[0].tags
+
 
 if __name__ == "__main__":
     pytest.main([__file__])
